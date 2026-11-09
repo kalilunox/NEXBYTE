@@ -967,3 +967,25 @@ end
 
 Message("NEXBYTE", "Mobile interface updated", 3)
 
+
+
+-- NEXBYTE CLOSE BUTTON MINIMIZE FIX
+CloseButton.Visible = false
+
+local NewCloseButton = Instance.new("TextButton")
+NewCloseButton.Name = "NEXBYTE_MINIMIZE_X"
+NewCloseButton.Size = CloseButton.Size
+NewCloseButton.Position = CloseButton.Position
+NewCloseButton.AnchorPoint = CloseButton.AnchorPoint
+NewCloseButton.BackgroundColor3 = Color3.fromRGB(175, 55, 65)
+NewCloseButton.Text = "X"
+NewCloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+NewCloseButton.Font = Enum.Font.GothamBold
+NewCloseButton.TextSize = 13
+NewCloseButton.ZIndex = 100
+NewCloseButton.Parent = TitleBar
+
+NewCloseButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    MiniButton.Visible = true
+end)
