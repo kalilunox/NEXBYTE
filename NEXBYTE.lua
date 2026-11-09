@@ -890,3 +890,64 @@ end)
 UpdateStatus()
 Message("NEXBYTE", "NEXBYTE ADMIN loaded successfully", 3)
 
+
+-- =====================================================
+
+-- =====================================================
+-- NEXBYTE MOBILE UI v2
+-- =====================================================
+
+local mobileScale = MainFrame:FindFirstChildOfClass("UIScale")
+
+if not mobileScale then
+    mobileScale = Instance.new("UIScale")
+    mobileScale.Parent = MainFrame
+end
+
+mobileScale.Scale = 0.78
+
+MainFrame.Size = UDim2.fromOffset(340, 452)
+MainFrame.BackgroundColor3 = Color3.fromRGB(5, 12, 22)
+MainFrame.BackgroundTransparency = 0.18
+MainFrame.ClipsDescendants = true
+
+TitleBar.BackgroundColor3 = Color3.fromRGB(9, 23, 38)
+TitleBar.BackgroundTransparency = 0.12
+
+SelectionFrame.BackgroundColor3 = Color3.fromRGB(10, 25, 40)
+SelectionFrame.BackgroundTransparency = 0.2
+
+for _, object in ipairs(MainFrame:GetDescendants()) do
+    if object:IsA("TextButton") then
+        object.BackgroundTransparency = 0.18
+        object.TextScaled = false
+    elseif object:IsA("TextLabel") then
+        object.BackgroundTransparency = 1
+    elseif object:IsA("Frame") then
+        object.BackgroundTransparency = 0.2
+    elseif object:IsA("ScrollingFrame") then
+        object.BackgroundTransparency = 0.25
+        object.ScrollBarThickness = 3
+        object.ScrollBarImageColor3 = Color3.fromRGB(0, 195, 235)
+    end
+end
+
+-- Compact mobile buttons
+StartButton.TextSize = 11
+StopButton.TextSize = 11
+SelectAllButton.TextSize = 10
+DeselectAllButton.TextSize = 10
+
+-- NEXBYTE accent
+local accent = Color3.fromRGB(0, 195, 235)
+
+for _, object in ipairs(MainFrame:GetDescendants()) do
+    if object:IsA("UIStroke") then
+        object.Color = accent
+        object.Transparency = 0.78
+        object.Thickness = 1
+    end
+end
+
+Message("NEXBYTE", "Mobile interface updated", 3)
+
