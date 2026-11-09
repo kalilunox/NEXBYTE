@@ -1,3 +1,19 @@
+-- NEXBYTE STARTUP CLEANUP
+local _nxPlayer = game:GetService("Players").LocalPlayer
+if _nxPlayer then
+    local _nxParents = {_nxPlayer:WaitForChild("PlayerGui")}
+    pcall(function()
+        table.insert(_nxParents, game:GetService("CoreGui"))
+    end)
+    for _, _nxParent in ipairs(_nxParents) do
+        for _, _nxGui in ipairs(_nxParent:GetChildren()) do
+            if _nxGui.Name == "NEXBYTE_ADMIN" or _nxGui.Name == "TPList" then
+                _nxGui:Destroy()
+            end
+        end
+    end
+end
+
 --[[
     KILASIK's Multi-Target Fling Exploit
     Based on the working fling mechanism from zqyDSUWX
@@ -904,7 +920,7 @@ if not mobileScale then
     mobileScale.Parent = MainFrame
 end
 
-mobileScale.Scale = 0.78
+mobileScale.Scale = 0.68
 
 MainFrame.Size = UDim2.fromOffset(340, 452)
 MainFrame.BackgroundColor3 = Color3.fromRGB(5, 12, 22)
