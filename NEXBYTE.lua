@@ -529,7 +529,7 @@ ScreenGui.IgnoreGuiInset = true
 ScreenGui.DisplayOrder = 9999
 
 MainFrame.Name = "NEXBYTE_MAIN"
-MainFrame.Size = UDim2.fromOffset(340, 452)
+MainFrame.Size = UDim2.fromOffset(340, 500)
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 MainFrame.Position = UDim2.fromScale(0.5, 0.5)
 MainFrame.BackgroundColor3 = BG
@@ -723,7 +723,7 @@ local PauseButton = MakeButton(
 -- Footer
 local Footer = Instance.new("TextLabel")
 Footer.Name = "NEXBYTE_FOOTER"
-Footer.Position = UDim2.new(0, 12, 0, 432)
+Footer.Position = UDim2.new(0, 12, 0, 480)
 Footer.Size = UDim2.new(1, -24, 0, 14)
 Footer.BackgroundTransparency = 1
 Footer.Text = "NEXBYTE TOOLKIT  •  CLIENT CONTROL"
@@ -779,6 +779,208 @@ local function GetSelectedTarget()
     end
     return nil
 end
+
+
+-- NEXBYTE TROLL CONTROLS
+local TrollBring = MakeButton(
+    "TrollBring", "BRING",
+    UDim2.new(0, 10, 0, 445),
+    UDim2.fromOffset(100, 32), ACCENT_DARK
+)
+
+local TrollToolKill = MakeButton(
+    "TrollToolKill", "TOOL KILL",
+    UDim2.new(0, 120, 0, 445),
+    UDim2.fromOffset(100, 32), ACCENT_DARK
+)
+
+local TrollTouchFling = MakeButton(
+    "TrollTouchFling", "TOUCH FLING: OFF",
+    UDim2.new(0, 230, 0, 445),
+    UDim2.fromOffset(100, 32), ACCENT_DARK
+)
+
+-- BRING
+local BringActive = false
+
+TrollBring.MouseButton1Click:Connect(function()
+    if BringActive then
+        BringActive = false
+        TrollBring.Text = "BRING"
+        TrollBring.BackgroundColor3 = ACCENT_DARK
+        return
+    end
+
+    local target = GetSelectedTarget()
+    local myChar = Player.Character
+    local targetChar = target and target.Character
+
+    local hrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+
+    if not (hrp and targetRoot) then
+        Message("NEXBYTE", "Target unavailable", 2)
+        return
+    end
+
+    BringActive = true
+    TrollBring.Text = "BRINGING..."
+    TrollBring.BackgroundColor3 = ACCENT
+
+    task.spawn(function()
+        local speeding = 32
+        local maxspeed = 75
+        local off = CFrame.Angles(-math.pi / 2, 0, 0)
+
+        local fromP = targetRoot.Position
+        local toP = hrp.Position
+        local destination = hrp.CFrame
+        local mag = (fromP - toP).Magnitude - 3
+        local lv = CFrame.new(fromP, toP).LookVector
+        local vel = 0
+        local pos = fromP - Vector3.new(0, 2, 0)
+        toP = toP - Vector3.new(0, 2, 0)
+
+        local last = os.clock()
+        local way = 0
+        local reachedMax = false
+
+        while BringActive
+            and myChar:IsDescendantOf(workspace)
+            and targetChar:IsDescendantOf(workspace) do
+
+            local now = os.clock()
+            local dt = now - last
+            last = now
+
+            if reachedMax then
+                if mag - way < reachedMax then
+                    vel = vel - dt * speeding
+                    if vel < 0 then break end
+                end
+            else
+                if way > mag / 2 then
+                    vel = vel - dt * speeding
+                    if vel < 0 then break end
+                else
+                    vel = vel + dt * speeding
+                    if vel > maxspeed then
+                        reachedMax = way
+                        vel = maxspeed
+                    end
+                end
+            end
+
+            way = way + vel * dt
+
+            local humanoid = myChar:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.FloorMaterial == Enum.Material.Air then
+                hrp.CFrame = CFrame.new(pos + lv * way, toP) * off
+                hrp.AssemblyLinearVelocity = lv * (vel + 1)
+                hrp.AssemblyAngularVelocity = Vector3.zero
+            end
+
+            task.wait()
+        end
+
+        if hrp.Parent then
+            hrp.CFrame = destination
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+        end
+
+        BringActive = false
+        TrollBring.Text = "BRING"
+        TrollBring.BackgroundColor3 = ACCENT_DARK
+    end)
+end)
+
+-- TOOL KILL
+TrollToolKill.MouseButton1Click:Connect(function()
+    local target = GetSelectedTarget()
+    local char = Player.Character
+    local tool = char and char:FindFirstChildOfClass("Tool")
+    local handle = tool and tool:FindFirstChild("Handle")
+    local touch = handle and handle:FindFirstChildOfClass("TouchTransmitter")
+    local root = target and target.Character
+        and target.Character:FindFirstChild("HumanoidRootPart")
+
+    if not tool or not handle or not touch then
+        Message("NEXBYTE", "Equip a compatible Tool first", 2)
+        return
+    end
+
+    if not root then
+        Message("NEXBYTE", "Select a player first", 2)
+        return
+    end
+
+    if type(firetouchinterest) ~= "function" then
+        Message("NEXBYTE", "Touch function unavailable", 2)
+        return
+    end
+
+    for _ = 1, 10 do
+        firetouchinterest(handle, root, 0)
+        firetouchinterest(handle, root, 1)
+        firetouchinterest(handle, root, 0)
+        firetouchinterest(handle, root, 1)
+        firetouchinterest(handle, root, 0)
+        firetouchinterest(handle, root, 1)
+        firetouchinterest(handle, root, 0)
+        firetouchinterest(handle, root, 1)
+        firetouchinterest(handle, root, 0)
+        firetouchinterest(handle, root, 1)
+    end
+
+    Message("NEXBYTE", "Tool interaction sent to " .. target.Name, 2)
+end)
+
+-- TOUCH FLING
+local TouchFlingActive = false
+local TouchFlingMove = 0.1
+
+TrollTouchFling.MouseButton1Click:Connect(function()
+    TouchFlingActive = not TouchFlingActive
+
+    TrollTouchFling.Text = TouchFlingActive
+        and "TOUCH FLING: ON"
+        or "TOUCH FLING: OFF"
+
+    TrollTouchFling.BackgroundColor3 = TouchFlingActive
+        and ACCENT
+        or ACCENT_DARK
+
+    if TouchFlingActive then
+        task.spawn(function()
+            while TouchFlingActive do
+                RunService.Heartbeat:Wait()
+
+                local char = Player.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+
+                if root then
+                    local vel = root.AssemblyLinearVelocity
+
+                    root.AssemblyLinearVelocity =
+                        vel * 10000 + Vector3.new(0, 10000, 0)
+
+                    RunService.RenderStepped:Wait()
+                    if not TouchFlingActive then break end
+
+                    root.AssemblyLinearVelocity = vel
+                    RunService.Stepped:Wait()
+
+                    root.AssemblyLinearVelocity =
+                        vel + Vector3.new(0, TouchFlingMove, 0)
+
+                    TouchFlingMove = -TouchFlingMove
+                end
+            end
+        end)
+    end
+end)
+
 
 -- Teleport to selected player
 TPButton.MouseButton1Click:Connect(function()
@@ -923,7 +1125,7 @@ end
 
 mobileScale.Scale = 0.68
 
-MainFrame.Size = UDim2.fromOffset(340, 452)
+MainFrame.Size = UDim2.fromOffset(340, 500)
 MainFrame.BackgroundColor3 = Color3.fromRGB(5, 12, 22)
 MainFrame.BackgroundTransparency = 0.18
 MainFrame.ClipsDescendants = true
