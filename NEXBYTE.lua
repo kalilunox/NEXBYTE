@@ -15,7 +15,7 @@ if _nxPlayer then
 end
 
 --[[
-    KILASIK's Multi-Target Fling Exploit
+    NEXBYTE ADMIN
     Based on the working fling mechanism from zqyDSUWX
     Features:
     - Select multiple targets
@@ -52,7 +52,7 @@ TitleBar.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -30, 1, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "KILASIK'S MULTI-FLING"
+Title.Text = "NEXBYTE'S MULTI-FLING"
 Title.TextColor3 = Color3.fromRGB(255, 80, 80)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 18
