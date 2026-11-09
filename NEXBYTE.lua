@@ -483,14 +483,16 @@ local function StopFling()
     UpdateStatus()
     Message("Stopped", "Fling has been stopped", 2)
 end
+local MiniButton
+
 -- Set up button connections
 StartButton.MouseButton1Click:Connect(StartFling)
 StopButton.MouseButton1Click:Connect(StopFling)
 SelectAllButton.MouseButton1Click:Connect(function() ToggleAllPlayers(true) end)
 DeselectAllButton.MouseButton1Click:Connect(function() ToggleAllPlayers(false) end)
 CloseButton.MouseButton1Click:Connect(function()
-    StopFling()
-    ScreenGui:Destroy()
+    MainFrame.Visible = false
+    MiniButton.Visible = true
 end)
 -- Handle player joining/leaving
 Players.PlayerAdded:Connect(RefreshPlayerList)
@@ -745,7 +747,7 @@ MinimizeButton.TextSize = 17
 MinimizeButton.Parent = TitleBar
 Decorate(MinimizeButton, 6)
 
-local MiniButton = Instance.new("TextButton")
+MiniButton = Instance.new("TextButton")
 MiniButton.Name = "NEXBYTE_RESTORE"
 MiniButton.Size = UDim2.fromOffset(126, 38)
 MiniButton.Position = UDim2.new(0, 12, 0.5, -19)
@@ -966,26 +968,3 @@ for _, object in ipairs(MainFrame:GetDescendants()) do
 end
 
 Message("NEXBYTE", "Mobile interface updated", 3)
-
-
-
--- NEXBYTE CLOSE BUTTON MINIMIZE FIX
-CloseButton.Visible = false
-
-local NewCloseButton = Instance.new("TextButton")
-NewCloseButton.Name = "NEXBYTE_MINIMIZE_X"
-NewCloseButton.Size = CloseButton.Size
-NewCloseButton.Position = CloseButton.Position
-NewCloseButton.AnchorPoint = CloseButton.AnchorPoint
-NewCloseButton.BackgroundColor3 = Color3.fromRGB(175, 55, 65)
-NewCloseButton.Text = "X"
-NewCloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-NewCloseButton.Font = Enum.Font.GothamBold
-NewCloseButton.TextSize = 13
-NewCloseButton.ZIndex = 100
-NewCloseButton.Parent = TitleBar
-
-NewCloseButton.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-    MiniButton.Visible = true
-end)
