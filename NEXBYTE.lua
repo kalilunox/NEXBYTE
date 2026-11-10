@@ -1,423 +1,969 @@
--- NEXBYTE TROLL v4.0
--- Reuses the original NEXBYTE ADMIN handlers from the public repository.
--- Floating dark mobile UI wrapper. No fake SERVER REQUIRED buttons.
-
-local SOURCE_URL = "https://raw.githubusercontent.com/kalilunox/NEXBYTE/master/NEXBYTE.lua"
-
-local ok, source = pcall(function()
-    return game:HttpGet(SOURCE_URL)
-end)
-
-if not ok or type(source) ~= "string" or #source < 1000 then
-    warn("NEXBYTE TROLL: couldn't download the original NEXBYTE.lua")
-    return
-end
-
-if not source:find("SkidFling", 1, true) or not source:find("TrollToolKill", 1, true) then
-    warn("NEXBYTE TROLL: repository source doesn't match the expected NEXBYTE ADMIN version")
-    return
-end
-
-local UI_PATCH = [==[
--- =====================================================
--- NEXBYTE TROLL v4.0 - FLOATING UI PATCH
--- Appended to the original NEXBYTE.lua so its local
--- functions and event handlers remain in the same scope.
--- =====================================================
-
-local NXGui = ScreenGui
-NXGui.Name = "NEXBYTE_TROLL"
-NXGui.ResetOnSpawn = false
-NXGui.IgnoreGuiInset = true
-NXGui.DisplayOrder = 10000
-
--- Hide the old layout, but keep its function closures alive.
-if MainFrame then MainFrame.Visible = false end
-if MiniButton then MiniButton.Visible = false end
-
-local NXTheme = {
-    BG = Color3.fromRGB(5, 7, 10),
-    PANEL = Color3.fromRGB(13, 16, 22),
-    ROW = Color3.fromRGB(21, 25, 33),
-    ACCENT = Color3.fromRGB(0, 195, 235),
-    ACCENT_DARK = Color3.fromRGB(0, 87, 112),
-    TEXT = Color3.fromRGB(232, 240, 247),
-    MUTED = Color3.fromRGB(120, 135, 150),
-    RED = Color3.fromRGB(165, 43, 55),
-    GREEN = Color3.fromRGB(0, 125, 100)
-}
-
-local function NXCorner(obj, radius)
-    if not obj:FindFirstChildOfClass("UICorner") then
-        local c = Instance.new("UICorner")
-        c.CornerRadius = UDim.new(0, radius or 8)
-        c.Parent = obj
-    end
-end
-
-local function NXStroke(obj, color, transparency)
-    local s = obj:FindFirstChildOfClass("UIStroke")
-    if not s then
-        s = Instance.new("UIStroke")
-        s.Parent = obj
-    end
-    s.Color = color or NXTheme.ACCENT
-    s.Transparency = transparency or 0.72
-    s.Thickness = 1
-end
-
-local Window = Instance.new("Frame")
-Window.Name = "NEXBYTE_FLOATING_WINDOW"
-Window.Size = UDim2.fromOffset(340, 530)
-Window.AnchorPoint = Vector2.new(0.5, 0.5)
-Window.Position = UDim2.fromScale(0.5, 0.5)
-Window.BackgroundColor3 = NXTheme.BG
-Window.BackgroundTransparency = 0.12
-Window.BorderSizePixel = 0
-Window.Active = true
-Window.ClipsDescendants = true
-Window.Parent = NXGui
-NXCorner(Window, 13)
-NXStroke(Window, NXTheme.ACCENT, 0.35)
-
-local scale = Instance.new("UIScale")
-scale.Scale = UIS.TouchEnabled and 0.88 or 1
-scale.Parent = Window
-
-local Header = Instance.new("Frame")
-Header.Name = "Header"
-Header.Size = UDim2.new(1, 0, 0, 42)
-Header.BackgroundColor3 = NXTheme.PANEL
-Header.BackgroundTransparency = 0.08
-Header.BorderSizePixel = 0
-Header.Parent = Window
-NXCorner(Header, 13)
-
-local Brand = Instance.new("TextLabel")
-Brand.Size = UDim2.new(1, -100, 1, 0)
-Brand.Position = UDim2.fromOffset(13, 0)
-Brand.BackgroundTransparency = 1
-Brand.Text = "NEXBYTE  /  TROLL"
-Brand.TextColor3 = NXTheme.ACCENT
-Brand.Font = Enum.Font.GothamBold
-Brand.TextSize = 15
-Brand.TextXAlignment = Enum.TextXAlignment.Left
-Brand.Parent = Header
-
-local function NXHeaderButton(name, label, x, color)
-    local b = Instance.new("TextButton")
-    b.Name = name
-    b.Size = UDim2.fromOffset(30, 28)
-    b.Position = UDim2.new(1, x, 0, 7)
-    b.BackgroundColor3 = color
-    b.BackgroundTransparency = 0.05
-    b.Text = label
-    b.TextColor3 = NXTheme.TEXT
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 16
-    b.Parent = Header
-    NXCorner(b, 6)
-    return b
-end
-
-local Minimize = NXHeaderButton("Minimize", "—", -70, NXTheme.ROW)
-local Close = NXHeaderButton("Close", "×", -35, NXTheme.RED)
-
--- Drag from the header; works with mouse and touch.
-local UIS = game:GetService("UserInputService")
-local dragging = false
-local dragStart
-local startPosition
-
-Header.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-    or input.UserInputType == Enum.UserInputType.Touch then
-        if input.Position.X >= Header.AbsolutePosition.X + Header.AbsoluteSize.X - 78 then
-            return
-        end
-        dragging = true
-        dragStart = input.Position
-        startPosition = Window.Position
-    end
-end)
-
-UIS.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
-    or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        Window.Position = UDim2.new(
-            startPosition.X.Scale, startPosition.X.Offset + delta.X,
-            startPosition.Y.Scale, startPosition.Y.Offset + delta.Y
-        )
-    end
-end)
-
-UIS.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-    or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-    end
-end)
-
-local TabBar = Instance.new("Frame")
-TabBar.Size = UDim2.new(1, -16, 0, 34)
-TabBar.Position = UDim2.fromOffset(8, 50)
-TabBar.BackgroundTransparency = 1
-TabBar.Parent = Window
-
-local TabLayout = Instance.new("UIListLayout")
-TabLayout.FillDirection = Enum.FillDirection.Horizontal
-TabLayout.Padding = UDim.new(0, 5)
-TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabLayout.Parent = TabBar
-
-local Pages = {}
-for _, name in ipairs({"TARGETS", "TROLL", "TOOLS"}) do
-    local page = Instance.new("Frame")
-    page.Name = name .. "_PAGE"
-    page.Size = UDim2.new(1, -16, 1, -100)
-    page.Position = UDim2.fromOffset(8, 92)
-    page.BackgroundTransparency = 1
-    page.Visible = false
-    page.Parent = Window
-    Pages[name] = page
-
-    local tab = Instance.new("TextButton")
-    tab.Name = name .. "_TAB"
-    tab.Size = UDim2.fromOffset(101, 30)
-    tab.BackgroundColor3 = NXTheme.ROW
-    tab.BackgroundTransparency = 0.08
-    tab.Text = name
-    tab.TextColor3 = NXTheme.TEXT
-    tab.Font = Enum.Font.GothamBold
-    tab.TextSize = 10
-    tab.LayoutOrder = #TabBar:GetChildren()
-    tab.Parent = TabBar
-    NXCorner(tab, 7)
-    NXStroke(tab, NXTheme.ACCENT, 0.85)
-    tab.MouseButton1Click:Connect(function()
-        for pageName, pageObject in pairs(Pages) do
-            pageObject.Visible = pageName == name
-        end
-        for _, other in ipairs(TabBar:GetChildren()) do
-            if other:IsA("TextButton") then
-                other.BackgroundColor3 = other == tab and NXTheme.ACCENT_DARK or NXTheme.ROW
-                other.TextColor3 = other == tab and NXTheme.ACCENT or NXTheme.TEXT
+-- NEXBYTE STARTUP CLEANUP
+local _nxPlayer = game:GetService("Players").LocalPlayer
+if _nxPlayer then
+    local _nxParents = {_nxPlayer:WaitForChild("PlayerGui")}
+    pcall(function()
+        table.insert(_nxParents, game:GetService("CoreGui"))
+    end)
+    for _, _nxParent in ipairs(_nxParents) do
+        for _, _nxGui in ipairs(_nxParent:GetChildren()) do
+            if _nxGui.Name == "NEXBYTE_ADMIN" or _nxGui.Name == "TPList" then
+                _nxGui:Destroy()
             end
         end
-    end)
+    end
 end
 
-local function NXStyleExisting(button, parent, text, y, height, color)
-    button.Parent = parent
-    button.Position = UDim2.fromOffset(0, y)
-    button.Size = UDim2.new(1, 0, 0, height)
-    button.BackgroundColor3 = color or NXTheme.ROW
-    button.BackgroundTransparency = 0.12
-    button.Text = text
-    button.TextColor3 = NXTheme.TEXT
-    button.Font = Enum.Font.GothamBold
-    button.TextSize = 11
-    button.Visible = true
-    button.AutoButtonColor = true
-    NXCorner(button, 8)
-    NXStroke(button, NXTheme.ACCENT, 0.8)
-end
-
--- TARGETS PAGE: reuse the original multi-select player list + Fling handlers.
-local TargetsPage = Pages.TARGETS
-local Search = Instance.new("TextBox")
-Search.Name = "PlayerSearch"
-Search.Size = UDim2.new(1, 0, 0, 32)
-Search.Position = UDim2.fromOffset(0, 0)
-Search.BackgroundColor3 = NXTheme.ROW
-Search.BackgroundTransparency = 0.08
-Search.PlaceholderText = "Search player..."
-Search.PlaceholderColor3 = NXTheme.MUTED
-Search.Text = ""
-Search.TextColor3 = NXTheme.TEXT
-Search.Font = Enum.Font.Gotham
-Search.TextSize = 12
-Search.ClearTextOnFocus = false
-Search.Parent = TargetsPage
-NXCorner(Search, 7)
-NXStroke(Search, NXTheme.ACCENT, 0.87)
-
-SelectionFrame.Parent = TargetsPage
-SelectionFrame.Position = UDim2.fromOffset(0, 39)
-SelectionFrame.Size = UDim2.new(1, 0, 0, 242)
-SelectionFrame.BackgroundColor3 = NXTheme.PANEL
-SelectionFrame.BackgroundTransparency = 0.16
-SelectionFrame.BorderSizePixel = 0
-NXCorner(SelectionFrame, 8)
-NXStroke(SelectionFrame, NXTheme.ACCENT, 0.84)
-
-PlayerScrollFrame.Position = UDim2.fromOffset(6, 6)
-PlayerScrollFrame.Size = UDim2.new(1, -12, 1, -12)
-PlayerScrollFrame.BackgroundTransparency = 1
-PlayerScrollFrame.ScrollBarThickness = 3
-PlayerScrollFrame.ScrollBarImageColor3 = NXTheme.ACCENT
-
-StatusLabel.Parent = TargetsPage
-StatusLabel.Position = UDim2.fromOffset(0, 286)
-StatusLabel.Size = UDim2.new(1, 0, 0, 20)
+--[[
+    NEXBYTE ADMIN
+    Based on the working fling mechanism from zqyDSUWX
+    Features:
+    - Select multiple targets
+    - Continuous flinging until stopped
+    - Preserves player mobility (no teleporting to targets)
+    - Flings targets very far
+    - Compatible with JJSploit, Synapse X, etc.
+]]
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Player = Players.LocalPlayer
+-- GUI Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "NEXBYTEFlingGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game:GetService("CoreGui")
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 300, 0, 350)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+-- Title Bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -30, 1, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "NEXBYTE ADMIN"
+Title.TextColor3 = Color3.fromRGB(255, 80, 80)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 18
+Title.Parent = TitleBar
+-- Close Button
+local CloseButton = Instance.new("TextButton")
+CloseButton.Position = UDim2.new(1, -30, 0, 0)
+CloseButton.Size = UDim2.new(0, 30, 0, 30)
+CloseButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+CloseButton.BorderSizePixel = 0
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Font = Enum.Font.SourceSansBold
+CloseButton.TextSize = 18
+CloseButton.Parent = TitleBar
+-- Status Label
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Position = UDim2.new(0, 10, 0, 40)
+StatusLabel.Size = UDim2.new(1, -20, 0, 25)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.TextColor3 = NXTheme.ACCENT
-StatusLabel.Font = Enum.Font.GothamBold
-StatusLabel.TextSize = 11
+StatusLabel.Text = "Select targets to fling"
+StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatusLabel.Font = Enum.Font.SourceSans
+StatusLabel.TextSize = 16
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-NXStyleExisting(StartButton, TargetsPage, "START FLING", 314, 39, NXTheme.GREEN)
-StartButton.Size = UDim2.new(0.5, -4, 0, 39)
-NXStyleExisting(StopButton, TargetsPage, "STOP FLING", 314, 39, NXTheme.RED)
-StopButton.Position = UDim2.new(0.5, 4, 0, 314)
-StopButton.Size = UDim2.new(0.5, -4, 0, 39)
-NXStyleExisting(SelectAllButton, TargetsPage, "SELECT ALL", 361, 34, NXTheme.ROW)
-SelectAllButton.Size = UDim2.new(0.5, -4, 0, 34)
-NXStyleExisting(DeselectAllButton, TargetsPage, "CLEAR SELECT", 361, 34, NXTheme.ROW)
-DeselectAllButton.Position = UDim2.new(0.5, 4, 0, 361)
-DeselectAllButton.Size = UDim2.new(0.5, -4, 0, 34)
-
--- Search filters the original player rows, keeping the original selection state.
-local function NXApplyPlayerFilter()
-    local term = Search.Text:lower()
-    local visibleCount = 0
-    for _, entry in ipairs(PlayerScrollFrame:GetChildren()) do
-        if entry:IsA("Frame") then
-            local playerName = ""
-            for _, child in ipairs(entry:GetChildren()) do
-                if child:IsA("TextLabel") and child.Text ~= "✓" then
-                    playerName = child.Text
+StatusLabel.Parent = MainFrame
+-- Player Selection Frame
+local SelectionFrame = Instance.new("Frame")
+SelectionFrame.Position = UDim2.new(0, 10, 0, 70)
+SelectionFrame.Size = UDim2.new(1, -20, 0, 200)
+SelectionFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SelectionFrame.BorderSizePixel = 0
+SelectionFrame.Parent = MainFrame
+-- Player List ScrollFrame
+local PlayerScrollFrame = Instance.new("ScrollingFrame")
+PlayerScrollFrame.Position = UDim2.new(0, 5, 0, 5)
+PlayerScrollFrame.Size = UDim2.new(1, -10, 1, -10)
+PlayerScrollFrame.BackgroundTransparency = 1
+PlayerScrollFrame.BorderSizePixel = 0
+PlayerScrollFrame.ScrollBarThickness = 6
+PlayerScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+PlayerScrollFrame.Parent = SelectionFrame
+-- Start Fling Button
+local StartButton = Instance.new("TextButton")
+StartButton.Position = UDim2.new(0, 10, 0, 280)
+StartButton.Size = UDim2.new(0.5, -15, 0, 40)
+StartButton.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+StartButton.BorderSizePixel = 0
+StartButton.Text = "START FLING"
+StartButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+StartButton.Font = Enum.Font.SourceSansBold
+StartButton.TextSize = 18
+StartButton.Parent = MainFrame
+-- Stop Fling Button
+local StopButton = Instance.new("TextButton")
+StopButton.Position = UDim2.new(0.5, 5, 0, 280)
+StopButton.Size = UDim2.new(0.5, -15, 0, 40)
+StopButton.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+StopButton.BorderSizePixel = 0
+StopButton.Text = "STOP FLING"
+StopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+StopButton.Font = Enum.Font.SourceSansBold
+StopButton.TextSize = 18
+StopButton.Parent = MainFrame
+-- Select/Deselect Buttons
+local SelectAllButton = Instance.new("TextButton")
+SelectAllButton.Position = UDim2.new(0, 10, 0, 330)
+SelectAllButton.Size = UDim2.new(0.5, -15, 0, 30)
+SelectAllButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SelectAllButton.BorderSizePixel = 0
+SelectAllButton.Text = "SELECT ALL"
+SelectAllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SelectAllButton.Font = Enum.Font.SourceSans
+SelectAllButton.TextSize = 14
+SelectAllButton.Parent = MainFrame
+local DeselectAllButton = Instance.new("TextButton")
+DeselectAllButton.Position = UDim2.new(0.5, 5, 0, 330)
+DeselectAllButton.Size = UDim2.new(0.5, -15, 0, 30)
+DeselectAllButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+DeselectAllButton.BorderSizePixel = 0
+DeselectAllButton.Text = "DESELECT ALL"
+DeselectAllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+DeselectAllButton.Font = Enum.Font.SourceSans
+DeselectAllButton.TextSize = 14
+DeselectAllButton.Parent = MainFrame
+-- Variables
+local SelectedTargets = {}
+local PlayerCheckboxes = {}
+local FlingActive = false
+local FlingConnection = nil
+getgenv().OldPos = nil
+getgenv().FPDH = workspace.FallenPartsDestroyHeight
+-- Function to update player list
+local function RefreshPlayerList()
+    -- Clear existing player entries
+    for _, child in pairs(PlayerScrollFrame:GetChildren()) do
+        child:Destroy()
+    end
+    PlayerCheckboxes = {}
+    
+    -- Get players and sort them
+    local PlayerList = Players:GetPlayers()
+    table.sort(PlayerList, function(a, b) return a.Name:lower() < b.Name:lower() end)
+    
+    -- Create entries for each player
+    local yPosition = 5
+    for _, player in ipairs(PlayerList) do
+        if player ~= Player then -- Don't include yourself
+            -- Create player entry frame
+            local PlayerEntry = Instance.new("Frame")
+            PlayerEntry.Size = UDim2.new(1, -10, 0, 30)
+            PlayerEntry.Position = UDim2.new(0, 5, 0, yPosition)
+            PlayerEntry.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            PlayerEntry.BorderSizePixel = 0
+            PlayerEntry.Parent = PlayerScrollFrame
+            
+            -- Create checkbox
+            local Checkbox = Instance.new("TextButton")
+            Checkbox.Size = UDim2.new(0, 24, 0, 24)
+            Checkbox.Position = UDim2.new(0, 3, 0.5, -12)
+            Checkbox.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+            Checkbox.BorderSizePixel = 0
+            Checkbox.Text = ""
+            Checkbox.Parent = PlayerEntry
+            
+            -- Checkmark (initially invisible)
+            local Checkmark = Instance.new("TextLabel")
+            Checkmark.Size = UDim2.new(1, 0, 1, 0)
+            Checkmark.BackgroundTransparency = 1
+            Checkmark.Text = "✓"
+            Checkmark.TextColor3 = Color3.fromRGB(0, 255, 0)
+            Checkmark.TextSize = 18
+            Checkmark.Font = Enum.Font.SourceSansBold
+            Checkmark.Visible = SelectedTargets[player.Name] ~= nil
+            Checkmark.Parent = Checkbox
+            
+            -- Player name label
+            local NameLabel = Instance.new("TextLabel")
+            NameLabel.Size = UDim2.new(1, -35, 1, 0)
+            NameLabel.Position = UDim2.new(0, 30, 0, 0)
+            NameLabel.BackgroundTransparency = 1
+            NameLabel.Text = player.Name
+            NameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            NameLabel.TextSize = 16
+            NameLabel.Font = Enum.Font.SourceSans
+            NameLabel.TextXAlignment = Enum.TextXAlignment.Left
+            NameLabel.Parent = PlayerEntry
+            
+            -- Make entire entry clickable
+            local ClickArea = Instance.new("TextButton")
+            ClickArea.Size = UDim2.new(1, 0, 1, 0)
+            ClickArea.BackgroundTransparency = 1
+            ClickArea.Text = ""
+            ClickArea.ZIndex = 2
+            ClickArea.Parent = PlayerEntry
+            
+            -- Selection toggle on click
+            ClickArea.MouseButton1Click:Connect(function()
+                if SelectedTargets[player.Name] then
+                    SelectedTargets[player.Name] = nil
+                    Checkmark.Visible = false
+                else
+                    SelectedTargets[player.Name] = player
+                    Checkmark.Visible = true
+                end
+                
+                UpdateStatus()
+            end)
+            
+            -- Store reference to this player's UI
+            PlayerCheckboxes[player.Name] = {
+                Entry = PlayerEntry,
+                Checkmark = Checkmark
+            }
+            
+            yPosition = yPosition + 35
+        end
+    end
+    
+    -- Update scrollframe canvas size
+    PlayerScrollFrame.CanvasSize = UDim2.new(0, 0, 0, yPosition + 5)
+end
+-- Count selected targets
+local function CountSelectedTargets()
+    local count = 0
+    for _ in pairs(SelectedTargets) do
+        count = count + 1
+    end
+    return count
+end
+-- Update status display
+local function UpdateStatus()
+    local count = CountSelectedTargets()
+    if FlingActive then
+        StatusLabel.Text = "Flinging " .. count .. " target(s)"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+    else
+        StatusLabel.Text = count .. " target(s) selected" 
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+end
+-- Function to select/deselect all players
+local function ToggleAllPlayers(select)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= Player then
+            local checkboxData = PlayerCheckboxes[player.Name]
+            if checkboxData then
+                if select then
+                    SelectedTargets[player.Name] = player
+                    checkboxData.Checkmark.Visible = true
+                else
+                    SelectedTargets[player.Name] = nil
+                    checkboxData.Checkmark.Visible = false
+                end
+            end
+        end
+    end
+    
+    UpdateStatus()
+end
+-- Show notification
+local function Message(Title, Text, Time)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = Title,
+        Text = Text,
+        Duration = Time or 5
+    })
+end
+-- The fling function from zqyDSUWX
+local function SkidFling(TargetPlayer)
+    local Character = Player.Character
+    local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+    local RootPart = Humanoid and Humanoid.RootPart
+    local TCharacter = TargetPlayer.Character
+    if not TCharacter then return end
+    
+    local THumanoid
+    local TRootPart
+    local THead
+    local Accessory
+    local Handle
+    if TCharacter:FindFirstChildOfClass("Humanoid") then
+        THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
+    end
+    if THumanoid and THumanoid.RootPart then
+        TRootPart = THumanoid.RootPart
+    end
+    if TCharacter:FindFirstChild("Head") then
+        THead = TCharacter.Head
+    end
+    if TCharacter:FindFirstChildOfClass("Accessory") then
+        Accessory = TCharacter:FindFirstChildOfClass("Accessory")
+    end
+    if Accessory and Accessory:FindFirstChild("Handle") then
+        Handle = Accessory.Handle
+    end
+    if Character and Humanoid and RootPart then
+        if RootPart.Velocity.Magnitude < 50 then
+            getgenv().OldPos = RootPart.CFrame
+        end
+        
+        if THumanoid and THumanoid.Sit then
+            return Message("Error", TargetPlayer.Name .. " is sitting", 2)
+        end
+        
+        if THead then
+            workspace.CurrentCamera.CameraSubject = THead
+        elseif Handle then
+            workspace.CurrentCamera.CameraSubject = Handle
+        elseif THumanoid and TRootPart then
+            workspace.CurrentCamera.CameraSubject = THumanoid
+        end
+        
+        if not TCharacter:FindFirstChildWhichIsA("BasePart") then
+            return
+        end
+        
+        local FPos = function(BasePart, Pos, Ang)
+            RootPart.CFrame = CFrame.new(BasePart.Position) * Pos * Ang
+            Character:SetPrimaryPartCFrame(CFrame.new(BasePart.Position) * Pos * Ang)
+            RootPart.Velocity = Vector3.new(9e7, 9e7 * 10, 9e7)
+            RootPart.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+        end
+        
+        local SFBasePart = function(BasePart)
+            local TimeToWait = 2
+            local Time = tick()
+            local Angle = 0
+            repeat
+                if RootPart and THumanoid then
+                    if BasePart.Velocity.Magnitude < 50 then
+                        Angle = Angle + 100
+                        FPos(BasePart, CFrame.new(0, 1.5, 0) + THumanoid.MoveDirection * BasePart.Velocity.Magnitude / 1.25, CFrame.Angles(math.rad(Angle),0 ,0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, 0) + THumanoid.MoveDirection * BasePart.Velocity.Magnitude / 1.25, CFrame.Angles(math.rad(Angle), 0, 0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, 1.5, 0) + THumanoid.MoveDirection * BasePart.Velocity.Magnitude / 1.25, CFrame.Angles(math.rad(Angle),0 ,0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, 0) + THumanoid.MoveDirection * BasePart.Velocity.Magnitude / 1.25, CFrame.Angles(math.rad(Angle), 0, 0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, 1.5, 0) + THumanoid.MoveDirection, CFrame.Angles(math.rad(Angle),0 ,0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, 0) + THumanoid.MoveDirection, CFrame.Angles(math.rad(Angle), 0, 0))
+                        task.wait()
+                    else
+                        FPos(BasePart, CFrame.new(0, 1.5, THumanoid.WalkSpeed), CFrame.Angles(math.rad(90), 0, 0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, -THumanoid.WalkSpeed), CFrame.Angles(0, 0, 0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, 1.5, THumanoid.WalkSpeed), CFrame.Angles(math.rad(90), 0, 0))
+                        task.wait()
+                        
+                        FPos(BasePart, CFrame.new(0, -1.5, 0), CFrame.Angles(math.rad(90), 0, 0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, 0), CFrame.Angles(0, 0, 0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, 0), CFrame.Angles(math.rad(90), 0, 0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, 0), CFrame.Angles(0, 0, 0))
+                        task.wait()
+                    end
+                end
+            until Time + TimeToWait < tick() or not FlingActive
+        end
+        
+        workspace.FallenPartsDestroyHeight = 0/0
+        
+        local BV = Instance.new("BodyVelocity")
+        BV.Parent = RootPart
+        BV.Velocity = Vector3.new(0, 0, 0)
+        BV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+        
+        if TRootPart then
+            SFBasePart(TRootPart)
+        elseif THead then
+            SFBasePart(THead)
+        elseif Handle then
+            SFBasePart(Handle)
+        else
+            return Message("Error", TargetPlayer.Name .. " has no valid parts", 2)
+        end
+        
+        BV:Destroy()
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+        workspace.CurrentCamera.CameraSubject = Humanoid
+        
+        -- Reset character position
+        if getgenv().OldPos then
+            repeat
+                RootPart.CFrame = getgenv().OldPos * CFrame.new(0, .5, 0)
+                Character:SetPrimaryPartCFrame(getgenv().OldPos * CFrame.new(0, .5, 0))
+                Humanoid:ChangeState("GettingUp")
+                for _, part in pairs(Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.Velocity, part.RotVelocity = Vector3.new(), Vector3.new()
+                    end
+                end
+                task.wait()
+            until (RootPart.Position - getgenv().OldPos.p).Magnitude < 25
+            workspace.FallenPartsDestroyHeight = getgenv().FPDH
+        end
+    else
+        return Message("Error", "Your character is not ready", 2)
+    end
+end
+-- Start flinging selected targets
+local function StartFling()
+    if FlingActive then return end
+    
+    local count = CountSelectedTargets()
+    if count == 0 then
+        StatusLabel.Text = "No targets selected!"
+        wait(1)
+        StatusLabel.Text = "Select targets to fling"
+        return
+    end
+    
+    FlingActive = true
+    UpdateStatus()
+    Message("Started", "Flinging " .. count .. " targets", 2)
+    
+    -- Start flinger in separate thread
+    spawn(function()
+        while FlingActive do
+            local validTargets = {}
+            
+            -- Process all targets first to determine which are valid
+            for name, player in pairs(SelectedTargets) do
+                if player and player.Parent then
+                    validTargets[name] = player
+                else
+                    -- Remove players who left
+                    SelectedTargets[name] = nil
+                    local checkbox = PlayerCheckboxes[name]
+                    if checkbox then
+                        checkbox.Checkmark.Visible = false
+                    end
+                end
+            end
+            
+            -- Then attempt to fling each valid target
+            for _, player in pairs(validTargets) do
+                if FlingActive then
+                    SkidFling(player)
+                    -- Brief wait between targets to allow movement to reset
+                    wait(0.1)
+                else
                     break
                 end
             end
-            local show = term == "" or playerName:lower():find(term, 1, true) ~= nil
-            entry.Visible = show
-            if show then
-                entry.Position = UDim2.fromOffset(5, 5 + visibleCount * 35)
-                visibleCount += 1
+            
+            -- Update status periodically
+            UpdateStatus()
+            
+            -- Wait a moment before starting next fling cycle
+            wait(0.5)
+        end
+    end)
+end
+-- Stop flinging
+local function StopFling()
+    if not FlingActive then return end
+    
+    FlingActive = false
+    
+    UpdateStatus()
+    Message("Stopped", "Fling has been stopped", 2)
+end
+local MiniButton
+
+-- Set up button connections
+StartButton.MouseButton1Click:Connect(StartFling)
+StopButton.MouseButton1Click:Connect(StopFling)
+SelectAllButton.MouseButton1Click:Connect(function() ToggleAllPlayers(true) end)
+DeselectAllButton.MouseButton1Click:Connect(function() ToggleAllPlayers(false) end)
+CloseButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    MiniButton.Visible = true
+end)
+-- Handle player joining/leaving
+Players.PlayerAdded:Connect(RefreshPlayerList)
+Players.PlayerRemoving:Connect(function(player)
+    if SelectedTargets[player.Name] then
+        SelectedTargets[player.Name] = nil
+    end
+    RefreshPlayerList()
+    UpdateStatus()
+end)
+-- Initialize
+RefreshPlayerList()
+UpdateStatus()
+-- Success message
+
+-- =====================================================
+-- NEXBYTE ADMIN INTEGRATION
+-- =====================================================
+
+local GuiService = game:GetService("GuiService")
+
+local BG = Color3.fromRGB(7, 15, 27)
+local PANEL = Color3.fromRGB(13, 25, 40)
+local ROW = Color3.fromRGB(18, 35, 53)
+local ACCENT = Color3.fromRGB(0, 195, 235)
+local ACCENT_DARK = Color3.fromRGB(0, 105, 145)
+local TEXT = Color3.fromRGB(225, 240, 250)
+local MUTED = Color3.fromRGB(105, 145, 170)
+local RED = Color3.fromRGB(175, 55, 65)
+
+ScreenGui.Name = "NEXBYTE_ADMIN"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.DisplayOrder = 9999
+
+MainFrame.Name = "NEXBYTE_MAIN"
+MainFrame.Size = UDim2.fromOffset(340, 452)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.Position = UDim2.fromScale(0.5, 0.5)
+MainFrame.BackgroundColor3 = BG
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.ClipsDescendants = true
+
+TitleBar.Size = UDim2.new(1, 0, 0, 38)
+TitleBar.BackgroundColor3 = PANEL
+TitleBar.BorderSizePixel = 0
+
+Title.Position = UDim2.new(0, 12, 0, 0)
+Title.Size = UDim2.new(1, -90, 1, 0)
+Title.Text = "NEXBYTE  /  ADMIN"
+Title.TextColor3 = ACCENT
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+CloseButton.Position = UDim2.new(1, -34, 0, 4)
+CloseButton.Size = UDim2.fromOffset(28, 28)
+CloseButton.Text = "X"
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.TextSize = 13
+CloseButton.BackgroundColor3 = RED
+CloseButton.TextColor3 = TEXT
+
+StatusLabel.Position = UDim2.new(0, 12, 0, 44)
+StatusLabel.Size = UDim2.new(1, -24, 0, 24)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Font = Enum.Font.GothamMedium
+StatusLabel.TextSize = 12
+StatusLabel.TextColor3 = MUTED
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+SelectionFrame.Position = UDim2.new(0, 10, 0, 76)
+SelectionFrame.Size = UDim2.new(1, -20, 0, 216)
+SelectionFrame.BackgroundColor3 = PANEL
+SelectionFrame.BorderSizePixel = 0
+
+PlayerScrollFrame.Position = UDim2.new(0, 6, 0, 6)
+PlayerScrollFrame.Size = UDim2.new(1, -12, 1, -12)
+PlayerScrollFrame.ScrollBarThickness = 4
+PlayerScrollFrame.ScrollBarImageColor3 = ACCENT
+
+StartButton.Position = UDim2.new(0, 10, 0, 302)
+StartButton.Size = UDim2.new(0.5, -15, 0, 40)
+StartButton.BackgroundColor3 = ACCENT_DARK
+StartButton.Text = "START FLING"
+StartButton.Font = Enum.Font.GothamBold
+StartButton.TextSize = 13
+StartButton.TextColor3 = TEXT
+
+StopButton.Position = UDim2.new(0.5, 5, 0, 302)
+StopButton.Size = UDim2.new(0.5, -15, 0, 40)
+StopButton.BackgroundColor3 = RED
+StopButton.Text = "STOP FLING"
+StopButton.Font = Enum.Font.GothamBold
+StopButton.TextSize = 13
+StopButton.TextColor3 = TEXT
+
+SelectAllButton.Position = UDim2.new(0, 10, 0, 348)
+SelectAllButton.Size = UDim2.new(0.5, -15, 0, 32)
+SelectAllButton.BackgroundColor3 = ROW
+SelectAllButton.Text = "SELECT ALL"
+SelectAllButton.Font = Enum.Font.GothamBold
+SelectAllButton.TextSize = 11
+SelectAllButton.TextColor3 = TEXT
+
+DeselectAllButton.Position = UDim2.new(0.5, 5, 0, 348)
+DeselectAllButton.Size = UDim2.new(0.5, -15, 0, 32)
+DeselectAllButton.BackgroundColor3 = ROW
+DeselectAllButton.Text = "CLEAR SELECT"
+DeselectAllButton.Font = Enum.Font.GothamBold
+DeselectAllButton.TextSize = 11
+DeselectAllButton.TextColor3 = TEXT
+
+local function Decorate(obj, radius)
+    obj.BorderSizePixel = 0
+
+    if not obj:FindFirstChildOfClass("UICorner") then
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, radius or 8)
+        corner.Parent = obj
+    end
+
+    if not obj:FindFirstChildOfClass("UIStroke") then
+        local outline = Instance.new("UIStroke")
+        outline.Color = ACCENT
+        outline.Transparency = 0.78
+        outline.Thickness = 1
+        outline.Parent = obj
+    end
+end
+
+local function MakeButton(name, caption, position, size, color)
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Position = position
+    button.Size = size
+    button.BackgroundColor3 = color or ROW
+    button.Text = caption
+    button.TextColor3 = TEXT
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 11
+    button.AutoButtonColor = true
+    button.BorderSizePixel = 0
+    button.Parent = MainFrame
+    Decorate(button, 7)
+    return button
+end
+
+Decorate(MainFrame, 12)
+Decorate(SelectionFrame, 9)
+Decorate(StartButton, 8)
+Decorate(StopButton, 8)
+Decorate(SelectAllButton, 7)
+Decorate(DeselectAllButton, 7)
+Decorate(CloseButton, 6)
+
+-- Player list visuals and clickable selection layers
+local function StylePlayerRows()
+    for _, entry in ipairs(PlayerScrollFrame:GetChildren()) do
+        if entry:IsA("Frame") then
+            entry.BackgroundColor3 = ROW
+            Decorate(entry, 7)
+
+            for _, item in ipairs(entry:GetDescendants()) do
+                if item:IsA("TextButton") then
+                    if item.Size.X.Scale >= 0.9 then
+                        item.ZIndex = 1
+                    else
+                        item.ZIndex = 2
+                        item.BackgroundColor3 = PANEL
+                        Decorate(item, 5)
+                    end
+                elseif item:IsA("TextLabel") then
+                    item.ZIndex = item.Text == "✓" and 3 or 2
+                    item.TextColor3 = item.Text == "✓" and ACCENT or TEXT
+                    item.Font = Enum.Font.GothamMedium
+                    item.TextSize = item.Text == "✓" and 16 or 13
+                end
             end
         end
     end
-    PlayerScrollFrame.CanvasSize = UDim2.fromOffset(0, visibleCount * 35 + 8)
 end
 
-Search:GetPropertyChangedSignal("Text"):Connect(NXApplyPlayerFilter)
-RefreshButton.MouseButton1Click:Connect(function()
-    task.delay(0.2, NXApplyPlayerFilter)
-end)
-Players.PlayerAdded:Connect(function()
-    task.delay(0.35, NXApplyPlayerFilter)
-end)
-Players.PlayerRemoving:Connect(function()
-    task.delay(0.2, NXApplyPlayerFilter)
-end)
-task.delay(0.2, NXApplyPlayerFilter)
+-- Branded status
+local OriginalUpdateStatus = UpdateStatus
 
--- TROLL PAGE: move the original buttons; their original callbacks remain connected.
-local TrollPage = Pages.TROLL
-NXStyleExisting(TrollBring, TrollPage, "BRING", 8, 42, NXTheme.ACCENT_DARK)
-NXStyleExisting(TrollToolKill, TrollPage, "TOOL KILL", 60, 42, NXTheme.ACCENT_DARK)
-NXStyleExisting(TrollTouchFling, TrollPage, "TOUCH FLING: OFF", 112, 42, NXTheme.ACCENT_DARK)
+UpdateStatus = function()
+    OriginalUpdateStatus()
 
-local TrollNote = Instance.new("TextLabel")
-TrollNote.Size = UDim2.new(1, -8, 0, 54)
-TrollNote.Position = UDim2.fromOffset(4, 170)
-TrollNote.BackgroundTransparency = 1
-TrollNote.Text = "BRING uses the original movement routine. TOOL KILL needs an equipped compatible Tool. TOUCH FLING uses the original physics routine."
-TrollNote.TextColor3 = NXTheme.MUTED
-TrollNote.Font = Enum.Font.Gotham
-TrollNote.TextSize = 10
-TrollNote.TextWrapped = true
-TrollNote.TextXAlignment = Enum.TextXAlignment.Left
-TrollNote.TextYAlignment = Enum.TextYAlignment.Top
-TrollNote.Parent = TrollPage
-
--- TOOLS PAGE: original TP / spectate / refresh / pause-notification controls.
-local ToolsPage = Pages.TOOLS
-NXStyleExisting(TPButton, ToolsPage, "TP TO", 8, 42, NXTheme.ACCENT_DARK)
-NXStyleExisting(EyeButton, ToolsPage, "EYE", 60, 42, NXTheme.ROW)
-NXStyleExisting(RefreshButton, ToolsPage, "REFRESH PLAYERS", 112, 42, NXTheme.ROW)
-NXStyleExisting(PauseButton, ToolsPage, "PAUSE NOTIFICATION", 164, 42, NXTheme.ROW)
-
-local ToolsNote = Instance.new("TextLabel")
-ToolsNote.Size = UDim2.new(1, -8, 0, 42)
-ToolsNote.Position = UDim2.fromOffset(4, 222)
-ToolsNote.BackgroundTransparency = 1
-ToolsNote.Text = "EYE toggles camera spectating. PAUSE changes the built-in paused notification only."
-ToolsNote.TextColor3 = NXTheme.MUTED
-ToolsNote.Font = Enum.Font.Gotham
-ToolsNote.TextSize = 10
-ToolsNote.TextWrapped = true
-ToolsNote.TextXAlignment = Enum.TextXAlignment.Left
-ToolsNote.TextYAlignment = Enum.TextYAlignment.Top
-ToolsNote.Parent = ToolsPage
-
--- Floating restore chip.
-local Restore = Instance.new("TextButton")
-Restore.Name = "NEXBYTE_FLOATING_RESTORE"
-Restore.Size = UDim2.fromOffset(132, 38)
-Restore.Position = UDim2.new(0, 12, 0.55, 0)
-Restore.BackgroundColor3 = NXTheme.BG
-Restore.BackgroundTransparency = 0.08
-Restore.Text = "NEXBYTE  +"
-Restore.TextColor3 = NXTheme.ACCENT
-Restore.Font = Enum.Font.GothamBold
-Restore.TextSize = 12
-Restore.Visible = false
-Restore.Parent = NXGui
-NXCorner(Restore, 9)
-NXStroke(Restore, NXTheme.ACCENT, 0.25)
-
-Minimize.MouseButton1Click:Connect(function()
-    Window.Visible = false
-    Restore.Visible = true
-end)
-
-Restore.MouseButton1Click:Connect(function()
-    Window.Visible = true
-    Restore.Visible = false
-end)
-
-Close.MouseButton1Click:Connect(function()
-    -- Stop active loops before removing the interface.
-    pcall(function()
-        if BringActive then BringActive = false end
-        if TouchFlingActive then TouchFlingActive = false end
-        StopFling()
-        RestoreCamera()
-        GuiService:SetGameplayPausedNotificationEnabled(OriginalPauseState)
-    end)
-    NXGui:Destroy()
-end)
-
--- Remove the previous layout after all working controls have been reparented.
-if MiniButton then
-    pcall(function() MiniButton:Destroy() end)
-end
-if MainFrame then
-    pcall(function() MainFrame:Destroy() end)
-end
-
--- Start on the target selector tab.
-Pages.TARGETS.Visible = true
-for _, tab in ipairs(TabBar:GetChildren()) do
-    if tab:IsA("TextButton") then
-        tab.BackgroundColor3 = tab.Name == "TARGETS_TAB" and NXTheme.ACCENT_DARK or NXTheme.ROW
-        tab.TextColor3 = tab.Name == "TARGETS_TAB" and NXTheme.ACCENT or NXTheme.TEXT
+    local count = CountSelectedTargets()
+    if FlingActive then
+        StatusLabel.Text = "NEXBYTE // FLING ACTIVE // " .. count .. " TARGETS"
+        StatusLabel.TextColor3 = ACCENT
+    else
+        StatusLabel.Text = "NEXBYTE // " .. count .. " SELECTED"
+        StatusLabel.TextColor3 = MUTED
     end
 end
 
-UpdateStatus()
-Message("NEXBYTE", "TROLL v4.0 loaded - original handlers preserved", 3)
-]==]
+-- Utility buttons
+local TPButton = MakeButton(
+    "TPButton", "TP TO",
+    UDim2.new(0, 10, 0, 393),
+    UDim2.fromOffset(74, 34),
+    ACCENT_DARK
+)
 
-local okRun, err = pcall(function()
-    local chunk, compileError = loadstring(source .. "\n" .. UI_PATCH)
-    if not chunk then error(compileError) end
-    chunk()
+local EyeButton = MakeButton(
+    "EyeButton", "EYE",
+    UDim2.new(0, 90, 0, 393),
+    UDim2.fromOffset(74, 34)
+)
+
+local RefreshButton = MakeButton(
+    "RefreshButton", "REFRESH",
+    UDim2.new(0, 170, 0, 393),
+    UDim2.fromOffset(74, 34)
+)
+
+local PauseButton = MakeButton(
+    "PauseButton", "PAUSE UI",
+    UDim2.new(0, 250, 0, 393),
+    UDim2.fromOffset(78, 34)
+)
+
+-- Footer
+local Footer = Instance.new("TextLabel")
+Footer.Name = "NEXBYTE_FOOTER"
+Footer.Position = UDim2.new(0, 12, 0, 432)
+Footer.Size = UDim2.new(1, -24, 0, 14)
+Footer.BackgroundTransparency = 1
+Footer.Text = "NEXBYTE TOOLKIT  •  CLIENT CONTROL"
+Footer.TextColor3 = MUTED
+Footer.Font = Enum.Font.Gotham
+Footer.TextSize = 9
+Footer.TextXAlignment = Enum.TextXAlignment.Left
+Footer.Parent = MainFrame
+
+-- Minimize / restore
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.Position = UDim2.new(1, -66, 0, 4)
+MinimizeButton.Size = UDim2.fromOffset(28, 28)
+MinimizeButton.BackgroundColor3 = ROW
+MinimizeButton.Text = "_"
+MinimizeButton.TextColor3 = ACCENT
+MinimizeButton.Font = Enum.Font.GothamBold
+MinimizeButton.TextSize = 17
+MinimizeButton.Parent = TitleBar
+Decorate(MinimizeButton, 6)
+
+MiniButton = Instance.new("TextButton")
+MiniButton.Name = "NEXBYTE_RESTORE"
+MiniButton.Size = UDim2.fromOffset(126, 38)
+MiniButton.Position = UDim2.new(0, 12, 0.5, -19)
+MiniButton.BackgroundColor3 = BG
+MiniButton.Text = "NEXBYTE  +"
+MiniButton.TextColor3 = ACCENT
+MiniButton.Font = Enum.Font.GothamBold
+MiniButton.TextSize = 13
+MiniButton.Visible = false
+MiniButton.ZIndex = 50
+MiniButton.Parent = ScreenGui
+Decorate(MiniButton, 9)
+
+MinimizeButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    MiniButton.Visible = true
 end)
 
-if not okRun then
-    warn("NEXBYTE TROLL v4.0 error: " .. tostring(err))
+MiniButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = true
+    MiniButton.Visible = false
+end)
+
+-- Selected player helper
+local function GetSelectedTarget()
+    for _, target in ipairs(Players:GetPlayers()) do
+        if target ~= Player and SelectedTargets[target.Name] then
+            return target
+        end
+    end
+    return nil
 end
+
+-- Teleport to selected player
+TPButton.MouseButton1Click:Connect(function()
+    local target = GetSelectedTarget()
+    if not target then
+        Message("NEXBYTE", "Select a player first", 2)
+        return
+    end
+
+    local targetCharacter = target.Character
+    local myCharacter = Player.Character
+
+    local targetRoot = targetCharacter and (
+        targetCharacter:FindFirstChild("HumanoidRootPart")
+        or targetCharacter:FindFirstChild("Torso")
+    )
+
+    local myRoot = myCharacter and (
+        myCharacter:FindFirstChild("HumanoidRootPart")
+        or myCharacter:FindFirstChild("Torso")
+    )
+
+    if targetRoot and myRoot then
+        myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
+        Message("NEXBYTE", "Teleported to " .. target.Name, 2)
+    else
+        Message("NEXBYTE", "Character is not ready", 2)
+    end
+end)
+
+-- EYE / spectate
+local WatchingTarget = nil
+
+local function RestoreCamera()
+    WatchingTarget = nil
+    local character = Player.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+
+    if humanoid and workspace.CurrentCamera then
+        workspace.CurrentCamera.CameraSubject = humanoid
+    end
+
+    EyeButton.Text = "EYE"
+end
+
+EyeButton.MouseButton1Click:Connect(function()
+    if WatchingTarget then
+        RestoreCamera()
+        return
+    end
+
+    local target = GetSelectedTarget()
+    local character = target and target.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+
+    if not humanoid or not workspace.CurrentCamera then
+        Message("NEXBYTE", "Select an available player", 2)
+        return
+    end
+
+    WatchingTarget = target
+    workspace.CurrentCamera.CameraSubject = humanoid
+    EyeButton.Text = "EYE: ON"
+end)
+
+-- Refresh list
+RefreshButton.MouseButton1Click:Connect(function()
+    RefreshPlayerList()
+    task.wait(0.1)
+    StylePlayerRows()
+    UpdateStatus()
+end)
+
+-- Pause notification switch
+-- This changes the built-in notification only, not the actual game pause.
+local OriginalPauseState = false
+
+pcall(function()
+    OriginalPauseState = GuiService:GetGameplayPausedNotificationEnabled()
+end)
+
+local PauseDisabled = OriginalPauseState
+
+local function ApplyPauseState()
+    pcall(function()
+        GuiService:SetGameplayPausedNotificationEnabled(PauseDisabled)
+    end)
+
+    PauseButton.Text = PauseDisabled and "PAUSE: OFF" or "PAUSE: ON"
+end
+
+ApplyPauseState()
+
+PauseButton.MouseButton1Click:Connect(function()
+    PauseDisabled = not PauseDisabled
+    ApplyPauseState()
+end)
+
+-- Style the first player list and future updates
+StylePlayerRows()
+
+Players.PlayerAdded:Connect(function()
+    task.wait(0.25)
+    StylePlayerRows()
+end)
+
+Players.PlayerRemoving:Connect(function(target)
+    if WatchingTarget == target then
+        RestoreCamera()
+    end
+
+    task.wait(0.1)
+    StylePlayerRows()
+end)
+
+-- Cleanup
+ScreenGui.Destroying:Connect(function()
+    pcall(function()
+        StopFling()
+        GuiService:SetGameplayPausedNotificationEnabled(OriginalPauseState)
+    end)
+
+    RestoreCamera()
+end)
+
+UpdateStatus()
+Message("NEXBYTE", "NEXBYTE ADMIN loaded successfully", 3)
+
+
+-- =====================================================
+
+-- =====================================================
+-- NEXBYTE MOBILE UI v2
+-- =====================================================
+
+local mobileScale = MainFrame:FindFirstChildOfClass("UIScale")
+
+if not mobileScale then
+    mobileScale = Instance.new("UIScale")
+    mobileScale.Parent = MainFrame
+end
+
+mobileScale.Scale = 0.68
+
+MainFrame.Size = UDim2.fromOffset(340, 452)
+MainFrame.BackgroundColor3 = Color3.fromRGB(5, 12, 22)
+MainFrame.BackgroundTransparency = 0.18
+MainFrame.ClipsDescendants = true
+
+TitleBar.BackgroundColor3 = Color3.fromRGB(9, 23, 38)
+TitleBar.BackgroundTransparency = 0.12
+
+SelectionFrame.BackgroundColor3 = Color3.fromRGB(10, 25, 40)
+SelectionFrame.BackgroundTransparency = 0.2
+
+for _, object in ipairs(MainFrame:GetDescendants()) do
+    if object:IsA("TextButton") then
+        object.BackgroundTransparency = 0.18
+        object.TextScaled = false
+    elseif object:IsA("TextLabel") then
+        object.BackgroundTransparency = 1
+    elseif object:IsA("Frame") then
+        object.BackgroundTransparency = 0.2
+    elseif object:IsA("ScrollingFrame") then
+        object.BackgroundTransparency = 0.25
+        object.ScrollBarThickness = 3
+        object.ScrollBarImageColor3 = Color3.fromRGB(0, 195, 235)
+    end
+end
+
+-- Compact mobile buttons
+StartButton.TextSize = 11
+StopButton.TextSize = 11
+SelectAllButton.TextSize = 10
+DeselectAllButton.TextSize = 10
+
+-- NEXBYTE accent
+local accent = Color3.fromRGB(0, 195, 235)
+
+for _, object in ipairs(MainFrame:GetDescendants()) do
+    if object:IsA("UIStroke") then
+        object.Color = accent
+        object.Transparency = 0.78
+        object.Thickness = 1
+    end
+end
+
+Message("NEXBYTE", "Mobile interface updated", 3)
