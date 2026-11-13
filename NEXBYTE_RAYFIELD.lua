@@ -455,3 +455,190 @@ Settings:CreateButton({
 })
 
 Notify("NEXBYTE ADMIN", "Build 1.1 loaded")
+
+
+-- NEXBYTE SCRIPT HUB
+local HttpService = game:GetService("HttpService")
+local ScriptHub = Window:CreateTab({name = "SCRIPT HUB", icon = "search"})
+
+local searchQuery = ""
+local selectedRepo = nil
+local selectedScript = nil
+local autoExecute = true
+local repoMap = {}
+local scriptMap = {}
+
+ScriptHub:CreateSection({name = "GITHUB SCRIPT SEARCH"})
+
+ScriptHub:CreateInput({
+    name = "SEARCH QUERY",
+    placeholder = "Например: blox fruits",
+    callback = function(value)
+        searchQuery = value
+    end
+})
+
+local repoDropdown = ScriptHub:CreateDropdown({
+    name = "SELECT REPOSITORY",
+    options = {"Search first"},
+    value = "Search first",
+    callback = function(value)
+        selectedRepo = repoMap[value]
+    end
+})
+
+local scriptDropdown = ScriptHub:CreateDropdown({
+    name = "SELECT LUA FILE",
+    options = {"Load repository first"},
+    value = "Load repository first",
+    callback = function(value)
+        selectedScript = scriptMap[value]
+        if selectedScript and autoExecute then
+            task.spawn(function()
+                local ok, err = pcall(function()
+                    local source = game:HttpGet(selectedScript)
+                    assert(type(source) == "string" and #source > 0, "Empty script")
+                    local fn, compileError = loadstring(source)
+                    assert(fn, compileError or "Compilation failed")
+                    fn()
+                end)
+                if ok then
+                    Notify("SCRIPT HUB", "Script executed")
+                else
+                    Notify("EXECUTION ERROR", tostring(err):sub(1, 180))
+                end
+            end)
+        end
+    end
+})
+
+ScriptHub:CreateToggle({
+    name = "AUTO EXECUTE ON SELECTION",
+    value = true,
+    callback = function(value)
+        autoExecute = value
+    end
+})
+
+ScriptHub:CreateButton({
+    name = "SEARCH GITHUB",
+    callback = function()
+        if searchQuery:gsub("%s", "") == "" then
+            Notify("SEARCH", "Enter a search query")
+            return
+        end
+
+        local ok, result = pcall(function()
+            local query = HttpService:UrlEncode(searchQuery .. " roblox lua")
+            local url = "https://api.github.com/search/repositories?q="
+                .. query .. "&sort=stars&order=desc&per_page=10"
+            return HttpService:JSONDecode(game:HttpGet(url))
+        end)
+
+        if not ok or not result or not result.items then
+            Notify("GITHUB ERROR", "Search failed or API rate limit reached")
+            return
+        end
+
+        local options = {}
+        repoMap = {}
+        selectedRepo = nil
+
+        for _, repo in ipairs(result.items) do
+            local label = repo.full_name .. " | Stars: " .. tostring(repo.stargazers_count)
+            repoMap[label] = {
+                owner = repo.owner.login,
+                name = repo.name,
+                branch = repo.default_branch
+            }
+            table.insert(options, label)
+        end
+
+        if #options == 0 then
+            options = {"No repositories found"}
+        end
+
+        repoDropdown:Refresh(options)
+        Notify("GITHUB", "Repositories found: " .. #result.items)
+    end
+})
+
+ScriptHub:CreateButton({
+    name = "LOAD LUA FILES",
+    callback = function()
+        if not selectedRepo then
+            Notify("SCRIPT HUB", "Select a repository first")
+            return
+        end
+
+        local repo = selectedRepo
+        local url = "https://api.github.com/repos/"
+            .. repo.owner .. "/" .. repo.name
+            .. "/git/trees/" .. repo.branch .. "?recursive=1"
+
+        local ok, result = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet(url))
+        end)
+
+        if not ok or not result or not result.tree then
+            Notify("GITHUB ERROR", "Could not load repository files")
+            return
+        end
+
+        local options = {}
+        scriptMap = {}
+        selectedScript = nil
+
+        for _, item in ipairs(result.tree) do
+            if item.type == "blob"
+                and item.path:lower():match("%.lua$")
+                and #options < 50 then
+
+                local path = item.path
+                local raw = "https://raw.githubusercontent.com/"
+                    .. repo.owner .. "/" .. repo.name
+                    .. "/" .. repo.branch .. "/" .. path
+
+                scriptMap[path] = raw
+                table.insert(options, path)
+            end
+        end
+
+        if #options == 0 then
+            options = {"No Lua files found"}
+        end
+
+        scriptDropdown:Refresh(options)
+        Notify("SCRIPT HUB", "Lua files found: " .. #scriptMap)
+    end
+})
+
+ScriptHub:CreateButton({
+    name = "EXECUTE SELECTED FILE",
+    callback = function()
+        if not selectedScript then
+            Notify("SCRIPT HUB", "Select a Lua file first")
+            return
+        end
+
+        local ok, err = pcall(function()
+            local source = game:HttpGet(selectedScript)
+            assert(type(source) == "string" and #source > 0, "Empty script")
+            local fn, compileError = loadstring(source)
+            assert(fn, compileError or "Compilation failed")
+            fn()
+        end)
+
+        if ok then
+            Notify("SCRIPT HUB", "Execution finished")
+        else
+            Notify("EXECUTION ERROR", tostring(err):sub(1, 180))
+        end
+    end
+})
+
+ScriptHub:CreateText({
+    name = "WARNING",
+    text = "Third-party scripts are untrusted. They may steal data, alter your session or damage your game experience."
+})
+
