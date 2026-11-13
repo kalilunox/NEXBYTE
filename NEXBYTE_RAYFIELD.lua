@@ -1352,12 +1352,11 @@ NXTroll:CreateButton({
     end
 })
 
-NXTroll:CreateToggle({
-    name="TOUCH FLING",
-    value=false,
-    callback=function(enabled)
-        TouchFlingActive = enabled
-        if enabled then
+NXTroll:CreateButton({
+    name="TOUCH FLING: TOGGLE",
+    callback=function()
+        TouchFlingActive = not TouchFlingActive
+        if TouchFlingActive then
             task.spawn(function()
                 while TouchFlingActive do
                     game:GetService("RunService").Heartbeat:Wait()
@@ -1376,12 +1375,8 @@ NXTroll:CreateToggle({
                 end
             end)
         end
+        NXNotify("TOUCH FLING", TouchFlingActive and "ON" or "OFF")
     end
-})
-
-NXTroll:CreateText({
-    name="Info",
-    text="BRING intentionally omitted"
 })
 
 -- CAMERA
