@@ -222,33 +222,22 @@ Home:CreateButton({
 })
 
 -- PLAYER
-PlayerTab:CreateSection({name = "Target selection"})
-
-playerDropdown = PlayerTab:CreateDropdown({
-    name = "Select player",
-    options = GetPlayerNames(),
-    value = nil,
-    placeholder = "Choose a player",
-    callback = function(value)
-        selectedPlayerName = value
-        Notify("TARGET", "Selected: " .. tostring(value))
-    end
-})
+PlayerTab:CreateSection({name = "TARGET CONTROL"})
 
 PlayerTab:CreateButton({
-    name = "Refresh player list",
+    name = "REFRESH PLAYER LIST",
     callback = RefreshPlayers
 })
 
 PlayerTab:CreateButton({
-    name = "TP TO",
+    name = "TP TO SELECTED",
     callback = function()
         local target = FindSelectedPlayer()
         local targetRoot = target and GetRoot(target)
         local myRoot = GetRoot(LocalPlayer)
 
         if not targetRoot or not myRoot then
-            Notify("TP TO", "Player or character unavailable")
+            Notify("TP TO", "Select an available player first")
             return
         end
 
@@ -260,23 +249,66 @@ PlayerTab:CreateButton({
     end
 })
 
-PlayerTab:CreateSection({name = "Spectate"})
-
 PlayerTab:CreateButton({
-    name = "Start spectating",
+    name = "SPECTATE SELECTED",
     callback = StartSpectating
 })
 
 PlayerTab:CreateButton({
-    name = "Stop spectating",
+    name = "STOP SPECTATING",
     callback = StopSpectating
 })
 
+PlayerTab:CreateSection({name = "PLAYER SELECTION"})
+
+local function SafePlayerOptions()
+    local names = GetPlayerNames()
+    if #names == 0 then
+        return {"No other players"}
+    end
+    return names
+end
+
+local dropdownOK, dropdownError = pcall(function()
+    playerDropdown = PlayerTab:CreateDropdown({
+        name = "SELECT PLAYER",
+        options = SafePlayerOptions(),
+        value = SafePlayerOptions()[1],
+        placeholder = "Choose a player",
+        callback = function(value)
+            if type(value) == "table" then
+                value = value[1]
+            end
+
+            if value == "No other players" then
+                selectedPlayerName = nil
+                return
+            end
+
+            selectedPlayerName = value
+            Notify("TARGET", "Selected: " .. tostring(value))
+        end
+    })
+end)
+
+if not dropdownOK then
+    PlayerTab:CreateText({
+        name = "Dropdown error",
+        text = tostring(dropdownError)
+    })
+end
+
+local function UpdatePlayerDropdown()
+    if not playerDropdown then return end
+    local options = SafePlayerOptions()
+    pcall(function()
+        playerDropdown:Refresh(options)
+    end)
+end
+
 Players.PlayerAdded:Connect(function()
     task.wait(0.5)
-    if playerDropdown then
-        playerDropdown:Refresh(GetPlayerNames())
-    end
+    UpdatePlayerDropdown()
 end)
 
 Players.PlayerRemoving:Connect(function(player)
@@ -288,19 +320,15 @@ Players.PlayerRemoving:Connect(function(player)
     end
 
     task.wait(0.2)
-    if playerDropdown then
-        playerDropdown:Refresh(GetPlayerNames())
-    end
+    UpdatePlayerDropdown()
 end)
 
 LocalPlayer.CharacterAdded:Connect(function(character)
     if spectating then
         task.wait(0.5)
-        if Camera then
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                Camera.CameraSubject = humanoid
-            end
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid and workspace.CurrentCamera then
+            workspace.CurrentCamera.CameraSubject = humanoid
         end
         spectating = false
         originalCameraSubject = nil
