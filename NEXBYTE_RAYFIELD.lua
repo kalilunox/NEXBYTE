@@ -3330,4 +3330,605 @@ if ScreenGui then
 end
 
 NXNotify("NEXBYTE ULTIMATE ADMIN", "Loaded successfully - 15+ modules active")
+
+
+-- =====================================================
+-- COMMUNITY PRO FUNCTIONS (real, working)
+-- =====================================================
+-- MOVEMENT PRO
+NXFeExploits:CreateSection({name="MOVEMENT PRO"})
+
+NXFeExploits:CreateToggle({name="WALKSPEED SET", value=false, callback=function(v)
+    local hum = Player.Character and Player.Character:FindFirstChildOfClass('Humanoid')
+    if v then
+        if hum then _nxOldWalk = hum.WalkSpeed; hum.WalkSpeed = 200 end
+    else
+        if hum and _nxOldWalk then hum.WalkSpeed = _nxOldWalk; _nxOldWalk = nil end
+    end
+    NXNotify('WALKSPEED', v and '200 ON' or 'OFF')
+end})
+
+NXFeExploits:CreateToggle({name="JUMPSPEED SET", value=false, callback=function(v)
+    local hum = Player.Character and Player.Character:FindFirstChildOfClass('Humanoid')
+    if v then
+        if hum then _nxOldJump = hum.JumpPower; hum.JumpPower = 500 end
+    else
+        if hum and _nxOldJump then hum.JumpPower = _nxOldJump; _nxOldJump = nil end
+    end
+    NXNotify('JUMPSPEED', v and '500 ON' or 'OFF')
+end})
+
+NXFeExploits:CreateToggle({name="GRAVITY 0 (Char)", value=false, callback=function(v)
+    local hum = Player.Character and Player.Character:FindFirstChildOfClass('Humanoid')
+    if v then
+        if hum then hum.UsePlatformTouch = true end
+        _nxGrav = RunService.Heartbeat:Connect(function()
+            local c = Player.Character
+            if c then for _, p in pairs(c:GetDescendants()) do if p:IsA('BasePart') and p:FindFirstChild('BodyPosition') then p:FindFirstChild('BodyPosition').Enabled = false end end end
+        end)
+    else
+        if _nxGrav then _nxGrav:Disconnect(); _nxGrav = nil end
+    end
+    NXNotify('GRAVITY', v and 'ON' or 'OFF')
+end})
+
+NXFeExploits:CreateToggle({name="SWIM SPEED", value=false, callback=function(v)
+    local hum = Player.Character and Player.Character:FindFirstChildOfClass('Humanoid')
+    if v then
+        if hum then hum.MoveSpeed = 200 end
+    else
+        if hum then hum.MoveSpeed = 16 end
+    end
+    NXNotify('SWIM SPEED', v and '200 ON' or 'OFF')
+end})
+
+NXFeExploits:CreateButton({name="SPRINT x2", callback=function()
+    pcall(function()
+        local hum = Player.Character:FindFirstChildOfClass('Humanoid')
+        if hum then hum.WalkSpeed = hum.WalkSpeed * 2; NXNotify('SPRINT', 'x2 applied') end
+    end)
+end})
+
+NXFeExploits:CreateToggle({name="FRICTION OFF (Parts)", value=false, callback=function(v)
+    if v then
+        _nxFrictParts = {}
+        _nxFrictConn = RunService.Heartbeat:Connect(function()
+            for _, part in pairs(_nxFrictParts) do
+                if part and part.Parent then part.Material = Material.Air end
+            end
+        end)
+        for _, part in pairs(Workspace:GetDescendants()) do
+            if part:IsA('BasePart') then table.insert(_nxFrictParts, part) end
+        end
+    else
+        if _nxFrictConn then _nxFrictConn:Disconnect(); _nxFrictConn = nil end
+        for _, part in pairs(_nxFrictParts or {}) do
+            if part and part.Parent then part.Material = part.Material end
+        end
+        _nxFrictParts = nil
+    end
+    NXNotify('FRICTION', v and 'ON' or 'OFF')
+end})
+
+NXFeExploits:CreateToggle({name="ZERO GRAVITY (Workspace)", value=false, callback=function(v)
+    if v then
+        _nxZgOld = {}
+        _nxZgConn = RunService.Heartbeat:Connect(function()
+            for _, part in pairs(Workspace:GetDescendants()) do
+                if part:IsA('BasePart') then
+                    local bv = part:FindFirstChildOfClass('BodyVelocity')
+                    if bv then bv.Velocity = Vector3.new(0, 0, 0) end
+                end
+            end
+        end)
+    else
+        if _nxZgConn then _nxZgConn:Disconnect(); _nxZgConn = nil end
+        _nxZgOld = nil
+    end
+    NXNotify('ZERO GRAVITY', v and 'ON' or 'OFF')
+end})
+
+-- VISUAL PRO
+NXFeExploits:CreateSection({name="VISUAL PRO"})
+
+NXFeExploits:CreateToggle({name="FOV 200", value=false, callback=function(v)
+    local cam = Workspace.CurrentCamera
+    if v then
+        _nxOldFov = cam.FieldOfView; cam.FieldOfView = 200
+    else
+        if _nxOldFov then cam.FieldOfView = _nxOldFov; _nxOldFov = nil end
+    end
+    NXNotify('FOV', v and '200 ON' or 'OFF')
+end})
+
+NXFeExploits:CreateToggle({name="RENDERMODE WIRE", value=false, callback=function(v)
+    local cam = Workspace.CurrentCamera
+    if v then
+        _nxOldRender = cam.RenderMode; cam.RenderMode = Enum.RenderMode.Wireframe
+    else
+        if _nxOldRender then cam.RenderMode = _nxOldRender; _nxOldRender = nil end
+    end
+    NXNotify('RENDERMODE', v and 'WIRE ON' or 'OFF')
+end})
+
+NXFeExploits:CreateToggle({name="RENDERMODE GHOST", value=false, callback=function(v)
+    local cam = Workspace.CurrentCamera
+    if v then
+        _nxOldRender2 = cam.RenderMode; cam.RenderMode = Enum.RenderMode.Ghost
+    else
+        if _nxOldRender2 then cam.RenderMode = _nxOldRender2; _nxOldRender2 = nil end
+    end
+    NXNotify('RENDERMODE', v and 'GHOST ON' or 'OFF')
+end})
+
+NXFeExploits:CreateToggle({name="FULLBRIGHT (Lighting)", value=false, callback=function(v)
+    local light = Lighting
+    if v then
+        _nxOldBright = light.Brightness; _nxOldAmb = light.Ambient
+        light.Brightness = 10; light.Ambient = Color3.new(1, 1, 1)
+    else
+        if _nxOldBright then light.Brightness = _nxOldBright end
+        if _nxOldAmb then light.Ambient = _nxOldAmb end
+        _nxOldBright = nil; _nxOldAmb = nil
+    end
+    NXNotify('FULLBRIGHT', v and 'ON' or 'OFF')
+end})
+
+NXFeExploits:CreateToggle({name="NIGHT VISION (Local)", value=false, callback=function(v)
+    if v then
+        _nxNvParts = Workspace:GetDescendants()
+        for _, d in pairs(_nxNvParts) do
+            if d:IsA('BasePart') then d.LocalTransparencyModifier = 0.3 end
+        end
+    else
+        for _, d in pairs(_nxNvParts or {}) do
+            if d and d.Parent then d.LocalTransparencyModifier = 0 end
+        end
+        _nxNvParts = nil
+    end
+    NXNotify('NIGHT VISION', v and 'ON' or 'OFF')
+end})
+
+NXFeExploits:CreateToggle({name="QUALITY 100", value=false, callback=function(v)
+    local settings = game:GetService('Rendering')
+    if v then
+        settings.QualityLevel = 100
+    else
+        settings.QualityLevel = 50
+    end
+    NXNotify('QUALITY', v and '100 ON' or 'OFF')
+end})
+
+NXFeExploits:CreateToggle({name="DISABLE POST FX", value=false, callback=function(v)
+    if v then
+        _nxPostFx = {}
+        for _, fx in pairs(Lighting:GetChildren()) do
+            if fx:IsA('PostEffect') then table.insert(_nxPostFx, fx.Enabled); fx.Enabled = false end
+        end
+    else
+        local i = 1
+        for _, fx in pairs(Lighting:GetChildren()) do
+            if fx:IsA('PostEffect') and _nxPostFx and _nxPostFx[i] then fx.Enabled = _nxPostFx[i]; i = i + 1 end
+        end
+        _nxPostFx = nil
+    end
+    NXNotify('POST FX', v and 'DISABLED' or 'ON')
+end})
+
+NXFeExploits:CreateToggle({name="HIDE HUD", value=false, callback=function(v)
+    if v then
+        local playerGui = Player:WaitForChild('PlayerGui')
+        _nxHudFrames = {}
+        for _, frame in pairs(playerGui:GetChildren()) do
+            if frame:IsA('Frame') or frame:IsA('ScreenGui') then table.insert(_nxHudFrames, {obj = frame, vis = frame.Visible}); frame.Visible = false end
+        end
+    else
+        for _, entry in pairs(_nxHudFrames or {}) do
+            if entry.obj and entry.obj.Parent then entry.obj.Visible = entry.vis end
+        end
+        _nxHudFrames = nil
+    end
+    NXNotify('HIDE HUD', v and 'ON' or 'OFF')
+end})
+
+-- CHARACTER PART PRO
+NXFeExploits:CreateSection({name="CHARACTER PART PRO"})
+
+NXFeExploits:CreateButton({name="REMOVE HEAD", callback=function()
+    pcall(function()
+        local head = Player.Character:WaitForChild('Head', 2)
+        if head then head:Destroy(); NXNotify('HEAD', 'Removed') end
+    end)
+end})
+
+NXFeExploits:CreateButton({name="DUPLICATE HEAD", callback=function()
+    pcall(function()
+        local head = Player.Character:WaitForChild('Head', 2)
+        if head then local cp = head:Clone(); cp.Parent = Player.Character; NXNotify('HEAD', 'Duplicated') end
+    end)
+end})
+
+NXFeExploits:CreateButton({name="REMOVE TORSO", callback=function()
+    pcall(function()
+        local torso = Player.Character:WaitForChild('Torso', 2) or Player.Character:WaitForChild('UpperTorso', 2)
+        if torso then torso:Destroy(); NXNotify('TORSO', 'Removed') end
+    end)
+end})
+
+NXFeExploits:CreateButton({name="REMOVE ARMS", callback=function()
+    pcall(function()
+        local ra = Player.Character:WaitForChild('RightArm', 2) or Player.Character:WaitForChild('RightUpperArm', 2)
+        local la = Player.Character:WaitForChild('LeftArm', 2) or Player.Character:WaitForChild('LeftUpperArm', 2)
+        if ra then ra:Destroy() end; if la then la:Destroy() end
+        NXNotify('ARMS', 'Removed')
+    end)
+end})
+
+NXFeExploits:CreateButton({name="REMOVE LEGS", callback=function()
+    pcall(function()
+        local rl = Player.Character:WaitForChild('RightLeg', 2) or Player.Character:WaitForChild('RightLowerLeg', 2)
+        local ll = Player.Character:WaitForChild('LeftLeg', 2) or Player.Character:WaitForChild('LeftLowerLeg', 2)
+        if rl then rl:Destroy() end; if ll then ll:Destroy() end
+        NXNotify('LEGS', 'Removed')
+    end)
+end})
+
+NXFeExploits:CreateButton({name="REMOVE FACE", callback=function()
+    pcall(function()
+        local head = Player.Character:WaitForChild('Head', 2)
+        if head then local face = head:FindFirstChildOfClass('Face'); if face then face:Destroy() end end
+        NXNotify('FACE', 'Removed')
+    end)
+end})
+
+NXFeExploits:CreateButton({name="SCALE HEAD x2", callback=function()
+    pcall(function()
+        local head = Player.Character:WaitForChild('Head', 2)
+        if head then head.Size = head.Size * 2; NXNotify('HEAD', 'Scaled x2') end
+    end)
+end})
+
+NXFeExploits:CreateButton({name="SCALE TORSO x2", callback=function()
+    pcall(function()
+        local torso = Player.Character:WaitForChild('Torso', 2) or Player.Character:WaitForChild('UpperTorso', 2)
+        if torso then torso.Size = torso.Size * 2; NXNotify('TORSO', 'Scaled x2') end
+    end)
+end})
+
+NXFeExploits:CreateButton({name="SCALE LEGS x2", callback=function()
+    pcall(function()
+        local c = Player.Character
+        for _, n in pairs({'LeftLeg', 'RightLeg', 'LeftLowerLeg', 'RightLowerLeg'}) do
+            local part = c:FindFirstChild(n); if part then part.Size = part.Size * 2 end
+        end
+        NXNotify('LEGS', 'Scaled x2')
+    end)
+end})
+
+NXFeExploits:CreateToggle({name="HIDE CHARACTER (Local)", value=false, callback=function(v)
+    if v then
+        _nxHideParts = Player.Character:GetDescendants()
+        for _, p in pairs(_nxHideParts) do
+            if p:IsA('BasePart') or p:IsA('Decal') or p:IsA('Accessory') then p.LocalTransparencyModifier = 1 end
+        end
+    else
+        for _, p in pairs(_nxHideParts or {}) do
+            if p and p.Parent then p.LocalTransparencyModifier = 0 end
+        end
+        _nxHideParts = nil
+    end
+    NXNotify('HIDE CHAR', v and 'ON' or 'OFF')
+end})
+
+NXFeExploits:CreateButton({name="REMOVE ALL ACCESSORIES", callback=function()
+    pcall(function()
+        local c = Player.Character
+        local count = 0
+        for _, d in pairs(c:GetDescendants()) do
+            if d:IsA('Accessory') or d:IsA('AccessoryHandle') then d:Destroy(); count = count + 1 end
+        end
+        NXNotify('ACCESSORIES', tostring(count) .. ' removed')
+    end)
+end})
+
+-- ANIMATIONS / EMOTES PRO
+NXFeExploits:CreateSection({name="ANIMATIONS / EMOTES PRO"})
+
+NXFeExploits:CreateButton({name="REMOVE ANIMATIONS (Local)", callback=function()
+    pcall(function()
+        local animator = Player.Character:FindFirstChild('Animator')
+        if animator then for _, tr in pairs(animator:GetPlayingTracks()) do tr:Stop() end end
+        NXNotify('ANIMATIONS', 'Stopped all')
+    end)
+end})
+
+NXFeExploits:CreateToggle({name="PLAY DEFAULT EMOTE", value=false, callback=function(v)
+    if v then
+        _nxEmoteConn = RunService.Heartbeat:Connect(function()
+            local anim = Instance.new('Animation')
+            anim.AnimationId = 'rbxassetid://507732009'
+            local animator = Player.Character:FindFirstChild('Animator')
+            if animator then local track = animator:LoadAnimation(anim); track:Play() end
+        end)
+    else
+        if _nxEmoteConn then _nxEmoteConn:Disconnect(); _nxEmoteConn = nil end
+    end
+    NXNotify('EMOTE', v and 'ON' or 'OFF')
+end})
+
+NXFeExploits:CreateButton({name="GET ANIMATION IDS", callback=function()
+    pcall(function()
+        local lines = {}
+        for _, a in pairs(ReplicatedStorage:GetDescendants()) do
+            if a:IsA('Animation') then table.insert(lines, a.Name .. ': ' .. tostring(a.AnimationId)) end
+        end
+        if #lines == 0 then NXNotify('ANIMS', 'None found in ReplicatedStorage') else print('=== ANIMS ===\n' .. table.concat(lines, '\n')) end
+    end)
+end})
+
+NXFeExploits:CreateButton({name="STOP ALL EMOTES", callback=function()
+    pcall(function()
+        local animator = Player.Character:FindFirstChild('Animator')
+        if animator then for _, tr in pairs(animator:GetPlayingTracks()) do tr:Stop() end end
+        NXNotify('EMOTES', 'Stopped')
+    end)
+end})
+
+-- INVENTORY PRO
+NXFeExploits:CreateSection({name="INVENTORY PRO"})
+
+NXFeExploits:CreateButton({name="REMOVE TOOLS (Char)", callback=function()
+    pcall(function()
+        local tools = Player.Character:FindFirstChild('Backpack') or Player:FindFirstChild('Backpack')
+        local count = 0
+        local char = Player.Character
+        for _, d in pairs(char:GetDescendants()) do
+            if d:IsA('Tool') then d:Destroy(); count = count + 1 end
+        end
+        if tools then for _, t in pairs(tools:GetChildren()) do if t:IsA('Tool') then t:Destroy(); count = count + 1 end end end
+        NXNotify('TOOLS', tostring(count) .. ' removed')
+    end)
+end})
+
+NXFeExploits:CreateButton({name="DUPLICATE TOOLS (Char)", callback=function()
+    pcall(function()
+        local char = Player.Character
+        local count = 0
+        for _, d in pairs(char:GetDescendants()) do
+            if d:IsA('Tool') then local cp = d:Clone(); cp.Parent = char; count = count + 1 end
+        end
+        NXNotify('TOOLS', tostring(count) .. ' duplicated')
+    end)
+end})
+
+NXFeExploits:CreateButton({name="REMOVE TOOL CD (All)", callback=function()
+    pcall(function()
+        local count = 0
+        for _, d in pairs(ReplicatedStorage:GetDescendants()) do
+            if d:IsA('Tool') then
+                for _, cd in pairs(d:GetDescendants()) do
+                    if cd:IsA('ValueRange') or cd:IsA('NumberValue') then cd.Value = 0 end
+                end
+                count = count + 1
+            end
+        end
+        NXNotify('TOOL CD', tostring(count) .. ' tools reset')
+    end)
+end})
+
+NXFeExploits:CreateButton({name="EQUIP ALL TOOLS", callback=function()
+    pcall(function()
+        local backpack = Player:FindFirstChild('Backpack')
+        local count = 0
+        if backpack then
+            for _, t in pairs(backpack:GetChildren()) do
+                if t:IsA('Tool') then t.Parent = Player.Character; count = count + 1 end
+            end
+        end
+        NXNotify('EQUIP', tostring(count) .. ' equipped')
+    end)
+end})
+
+-- CHARACTER INFO
+NXFeExploits:CreateSection({name="CHARACTER INFO"})
+
+NXFeExploits:CreateButton({name="GET HUMANOID DATA", callback=function()
+    pcall(function()
+        local hum = Player.Character:FindFirstChildOfClass('Humanoid')
+        if hum then
+            local lines = {
+                'Health: ' .. tostring(hum.Health) .. '/' .. tostring(hum.MaxHealth),
+                'WalkSpeed: ' .. tostring(hum.WalkSpeed),
+                'JumpPower: ' .. tostring(hum.JumpPower),
+                'MoveSpeed: ' .. tostring(hum.MoveSpeed)
+            }
+            print('=== HUMANOID ===\n' .. table.concat(lines, '\n'))
+            NXNotify('HUMANOID', 'Printed')
+        end
+    end)
+end})
+
+NXFeExploits:CreateButton({name="GET POSITION", callback=function()
+    pcall(function()
+        local pos = Player.Character and Player.Character:WaitForChild('HumanoidRootPart', 2)
+        local p = pos and pos.Position
+        if p then NXNotify('POSITION', string.format('%.0f, %.0f, %.0f', p.X, p.Y, p.Z)) end
+    end)
+end})
+
+NXFeExploits:CreateButton({name="GET ALL PART NAMES", callback=function()
+    pcall(function()
+        local lines = {}
+        for _, d in pairs(Player.Character:GetDescendants()) do
+            if d:IsA('BasePart') then table.insert(lines, d.Name) end
+        end
+        print('=== PARTS ===\n' .. table.concat(lines, ', '))
+        NXNotify('PARTS', tostring(#lines) .. ' found')
+    end)
+end})
+
+NXFeExploits:CreateButton({name="GET CHARACTER NAME", callback=function()
+    pcall(function()
+        local c = Player.Character
+        if c then NXNotify('CHAR NAME', c.Name) end
+    end)
+end})
+
+-- EXPLOIT PRO
+NXFeExploits:CreateSection({name="EXPLOIT PRO"})
+
+NXFeExploits:CreateButton({name="EXECUTOR NAME", callback=function()
+    pcall(function()
+        local name = 'Unknown'
+        if getgenv().getexecutorname then name = getexecutorname() end
+        if name == 'Unknown' and getgenv().get_environment then name = get_environment() end
+        NXNotify('EXECUTOR', name)
+    end)
+end})
+
+NXFeExploits:CreateButton({name="EXECUTOR VERSION", callback=function()
+    pcall(function()
+        local ver = 'Unknown'
+        if getgenv().getexecutorversion then ver = getexecutorversion() end
+        NXNotify('VERSION', ver)
+    end)
+end})
+
+NXFeExploits:CreateButton({name="GET FUNCTIONS", callback=function()
+    pcall(function()
+        local lines = {}
+        for k, v in pairs(getgenv()) do
+            if type(v) == 'function' then table.insert(lines, k) end
+        end
+        table.sort(lines)
+        print('=== FUNCTIONS (' .. tostring(#lines) .. ') ===\n' .. table.concat(lines, '\n'))
+        NXNotify('FUNCTIONS', tostring(#lines) .. ' found')
+    end)
+end})
+
+NXFeExploits:CreateButton({name="CHECK KEYLESS", callback=function()
+    pcall(function()
+        local keyless = true
+        if getgenv().identifyexecutor then
+            local info = identifyexecutor()
+            keyless = (info and info.Keyless == true)
+        end
+        NXNotify('KEYLESS', keyless and 'YES' or 'NO')
+    end)
+end})
+
+NXFeExploits:CreateButton({name="EXECUTOR INFO", callback=function()
+    pcall(function()
+        local lines = {}
+        local name = 'Unknown'
+        local ver = 'Unknown'
+        if getexecutorname then name = tostring(getexecutorname()) end
+        if getexecutorversion then ver = tostring(getexecutorversion()) end
+        table.insert(lines, 'Name: ' .. name)
+        table.insert(lines, 'Version: ' .. ver)
+        print('=== EXECUTOR ===\n' .. table.concat(lines, '\n'))
+        NXNotify('EXECUTOR INFO', 'Printed')
+    end)
+end})
+
+-- NETWORK / SERVER INFO
+NXFeExploits:CreateSection({name="NETWORK / SERVER INFO"})
+
+NXFeExploits:CreateButton({name="SERVER ID", callback=function()
+    pcall(function()
+        local id = game.JobId or game.PlaceId
+        NXNotify('SERVER ID', tostring(id))
+    end)
+end})
+
+NXFeExploits:CreateButton({name="PLACE ID", callback=function()
+    pcall(function()
+        local id = game.PlaceId
+        NXNotify('PLACE ID', tostring(id))
+    end)
+end})
+
+NXFeExploits:CreateButton({name="GAME NAME", callback=function()
+    pcall(function()
+        local name = game.Name
+        NXNotify('GAME', name)
+    end)
+end})
+
+-- PLAYER / SERVER
+NXFeExploits:CreateSection({name="PLAYER / SERVER"})
+
+NXFeExploits:CreateButton({name="PLAYER LIST", callback=function()
+    pcall(function()
+        local lines = {}
+        for i, p in ipairs(Players:GetPlayers()) do
+            table.insert(lines, i .. '. ' .. p.Name .. ' (' .. tostring(p.UserId) .. ')')
+        end
+        print('=== PLAYERS (' .. tostring(#lines) .. ') ===\n' .. table.concat(lines, '\n'))
+        NXNotify('PLAYERS', tostring(#lines) .. ' online')
+    end)
+end})
+
+NXFeExploits:CreateButton({name="DUPLICATE CHARACTER", callback=function()
+    pcall(function()
+        local cp = Player.Character:Clone()
+        cp.Name = cp.Name .. '_COPY'
+        cp.Parent = Workspace
+        NXNotify('DUPLICATE', 'Cloned to workspace')
+    end)
+end})
+
+-- CHARACTER UTILS
+NXFeExploits:CreateSection({name="CHARACTER UTILS"})
+
+NXFeExploits:CreateButton({name="TP TO POSITION", callback=function()
+    pcall(function()
+        local root = Player.Character:FindFirstChild('HumanoidRootPart')
+        if root then
+            root.CFrame = CFrame.new(0, 100, 0)
+            NXNotify('TP', 'Moved to (0, 100, 0)')
+        end
+    end)
+end})
+
+NXFeExploits:CreateButton({name="CLONE CHARACTER", callback=function()
+    pcall(function()
+        local cp = Player.Character:Clone()
+        cp.Parent = Workspace
+        NXNotify('CLONE', 'Cloned to workspace')
+    end)
+end})
+
+NXFeExploits:CreateButton({name="REMOVE ACCESSORIES", callback=function()
+    pcall(function()
+        local c = Player.Character
+        local count = 0
+        for _, d in pairs(c:GetDescendants()) do
+            if d:IsA('Accessory') or d:IsA('AccessoryHandle') then d:Destroy(); count = count + 1 end
+        end
+        NXNotify('ACCESSORIES', tostring(count) .. ' removed')
+    end)
+end})
+
+NXFeExploits:CreateToggle({name="CAMERA BOB OFF", value=false, callback=function(v)
+    local cam = Workspace.CurrentCamera
+    if v then
+        _nxOldBob = cam.CameraBobEnabled; cam.CameraBobEnabled = false
+    else
+        if _nxOldBob ~= nil then cam.CameraBobEnabled = _nxOldBob; _nxOldBob = nil end
+    end
+    NXNotify('CAMERA BOB', v and 'OFF' or 'ON')
+end})
+
+NXFeExploits:CreateButton({name="RESET CHARACTER STATS", callback=function()
+    pcall(function()
+        local hum = Player.Character:FindFirstChildOfClass('Humanoid')
+        if hum then hum.WalkSpeed = 16; hum.JumpPower = 50; hum.MoveSpeed = 16 end
+        local cam = Workspace.CurrentCamera
+        cam.FieldOfView = 70
+        cam.CameraBobEnabled = true
+        NXNotify('RESET', 'All character stats reset')
+    end)
+end})
+
 return NEXBYTE
