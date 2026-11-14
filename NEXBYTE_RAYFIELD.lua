@@ -2354,7 +2354,7 @@ NXFeExploits:CreateToggle({name="BOX ESP", value=false, callback=function(v)
         end
     end
     NXNotify("BOX ESP", v and "ON" or "OFF")
-end)
+end})
 
 -- Skeleton ESP
 local skeletonConn
@@ -2408,7 +2408,7 @@ NXFeExploits:CreateToggle({name="DISTANCE ESP", value=false, callback=function(v
         end
     end
     NXNotify("DIST ESP", v and "ON" or "OFF")
-end)
+end})
 
 -- Health Bar ESP
 local healthEspConn
@@ -2432,7 +2432,7 @@ NXFeExploits:CreateToggle({name="RAINBOW ESP", value=false, callback=function(v)
         if rainbowEspConn then rainbowEspConn:Disconnect() end
     end
     NXNotify("RAINBOW ESP", v and "ON" or "OFF")
-end)
+end})
 
 -- No Render (invisible others)
 NXFeExploits:CreateToggle({name="HIDE OTHERS (Local)", value=false, callback=function(v)
@@ -2595,7 +2595,7 @@ NXFeExploits:CreateButton({name="VIEW PROFILE (Website)", callback=function()
     else
         NXNotify("PROFILE", "No target selected")
     end
-end)
+end})
 
 -- Join Player's Game (if they're in one)
 NXFeExploits:CreateButton({name="JOIN PLAYER'S GAME", callback=function()
@@ -5152,7 +5152,7 @@ NXFeExploits:CreateToggle({name="EARTHQUAKE (Screen)", value=false, callback=fun
     NXNotify("EARTHQUAKE", v and "ON" or "OFF")
 end})
 
-NXFeExploits:CreateToggle({name="RAINBOW CHARACTER", value=false, callback=function�(v)
+NXFeExploits:CreateToggle({name="RAINBOW CHARACTER", value=false, callback=function(v)
     if v then
         _nxRainbowChar = RunService.RenderStepped:Connect(function()
             for _, part in pairs(Player.Character:GetDescendants()) do
