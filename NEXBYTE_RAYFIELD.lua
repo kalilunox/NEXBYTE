@@ -555,6 +555,123 @@ NXFlingTab:CreateButton({name="START FLING", callback=function()
     NEXBYTE._FlingActive = true
     NXNotify("FLING", "Started flinging " .. #targets .. " targets")
     task.spawn(function()
+        -- Proper SkidFling: preserve local player position, fling targets
+        local char = Player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local rp = hum and hum.RootPart
+        if not (char and hum and rp) then
+            NEXBYTE._FlingActive = false
+            return NXNotify("FLING", "Your character not ready")
+        end
+        local OldPos = rp.CFrame
+        local FPDH = workspace.FallenPartsDestroyHeight
+        workspace.FallenPartsDestroyHeight = 0/0
+
+        local function FlingTarget(targetPlayer)
+            if not NEXBYTE._FlingActive then return end
+            local tChar = targetPlayer.Character
+            if not tChar then return end
+            local tHum = tChar:FindFirstChildOfClass("Humanoid")
+            local tRoot = tHum and tHum.RootPart
+            local tHead = tChar:FindFirstChild("Head")
+            if not tRoot then return end
+            if tHum and tHum.Sit then return end
+
+            -- Disable sitting for local player
+            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+            local BV = Instance.new("BodyVelocity")
+            BV.Parent = rp
+            BV.Velocity = Vector3.new(0, 0, 0)
+            BV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+
+            -- Camera to target
+            if tHead then workspace.CurrentCamera.CameraSubject = tHead
+            elseif tHum then workspace.CurrentCamera.CameraSubject = tHum
+            end
+
+            local TimeToWait = 2
+            local Time = tick()
+            local Angle = 0
+
+            repeat
+                if not NEXBYTE._FlingActive then break end
+                if rp and tHum then
+                    if tRoot.Velocity.Magnitude < 50 then
+                        Angle = Angle + 100
+                        local offset = CFrame.new(0, 1.5, 0) + tHum.MoveDirection * tRoot.Velocity.Magnitude / 1.25
+                        rp.CFrame = CFrame.new(tRoot.Position) * offset * CFrame.Angles(math.rad(Angle), 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * offset * CFrame.Angles(math.rad(Angle), 0, 0))
+                        task.wait()
+                        offset = CFrame.new(0, -1.5, 0) + tHum.MoveDirection * tRoot.Velocity.Magnitude / 1.25
+                        rp.CFrame = CFrame.new(tRoot.Position) * offset * CFrame.Angles(math.rad(Angle), 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * offset * CFrame.Angles(math.rad(Angle), 0, 0))
+                        task.wait()
+                        offset = CFrame.new(0, 1.5, 0) + tHum.MoveDirection * tRoot.Velocity.Magnitude / 1.25
+                        rp.CFrame = CFrame.new(tRoot.Position) * offset * CFrame.Angles(math.rad(Angle), 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * offset * CFrame.Angles(math.rad(Angle), 0, 0))
+                        task.wait()
+                        offset = CFrame.new(0, -1.5, 0) + tHum.MoveDirection * tRoot.Velocity.Magnitude / 1.25
+                        rp.CFrame = CFrame.new(tRoot.Position) * offset * CFrame.Angles(math.rad(Angle), 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * offset * CFrame.Angles(math.rad(Angle), 0, 0))
+                        task.wait()
+                        offset = CFrame.new(0, 1.5, 0) + tHum.MoveDirection
+                        rp.CFrame = CFrame.new(tRoot.Position) * offset * CFrame.Angles(math.rad(Angle), 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * offset * CFrame.Angles(math.rad(Angle), 0, 0))
+                        task.wait()
+                        offset = CFrame.new(0, -1.5, 0) + tHum.MoveDirection
+                        rp.CFrame = CFrame.new(tRoot.Position) * offset * CFrame.Angles(math.rad(Angle), 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * offset * CFrame.Angles(math.rad(Angle), 0, 0))
+                        task.wait()
+                    else
+                        rp.CFrame = CFrame.new(tRoot.Position) * CFrame.new(0, 1.5, tHum.WalkSpeed) * CFrame.Angles(math.rad(90), 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * CFrame.new(0, 1.5, tHum.WalkSpeed) * CFrame.Angles(math.rad(90), 0, 0))
+                        task.wait()
+                        rp.CFrame = CFrame.new(tRoot.Position) * CFrame.new(0, -1.5, -tHum.WalkSpeed) * CFrame.Angles(0, 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * CFrame.new(0, -1.5, -tHum.WalkSpeed) * CFrame.Angles(0, 0, 0))
+                        task.wait()
+                        rp.CFrame = CFrame.new(tRoot.Position) * CFrame.new(0, 1.5, tHum.WalkSpeed) * CFrame.Angles(math.rad(90), 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * CFrame.new(0, 1.5, tHum.WalkSpeed) * CFrame.Angles(math.rad(90), 0, 0))
+                        task.wait()
+                        rp.CFrame = CFrame.new(tRoot.Position) * CFrame.new(0, -1.5, 0) * CFrame.Angles(math.rad(90), 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * CFrame.new(0, -1.5, 0) * CFrame.Angles(math.rad(90), 0, 0))
+                        task.wait()
+                        rp.CFrame = CFrame.new(tRoot.Position) * CFrame.new(0, -1.5, 0) * CFrame.Angles(0, 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * CFrame.new(0, -1.5, 0) * CFrame.Angles(0, 0, 0))
+                        task.wait()
+                        rp.CFrame = CFrame.new(tRoot.Position) * CFrame.new(0, -1.5, 0) * CFrame.Angles(math.rad(90), 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * CFrame.new(0, -1.5, 0) * CFrame.Angles(math.rad(90), 0, 0))
+                        task.wait()
+                        rp.CFrame = CFrame.new(tRoot.Position) * CFrame.new(0, -1.5, 0) * CFrame.Angles(0, 0, 0)
+                        char:SetPrimaryPartCFrame(CFrame.new(tRoot.Position) * CFrame.new(0, -1.5, 0) * CFrame.Angles(0, 0, 0))
+                        task.wait()
+                    end
+                end
+            until Time + TimeToWait < tick() or not NEXBYTE._FlingActive
+
+            -- Cleanup
+            BV:Destroy()
+            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+            if hum then workspace.CurrentCamera.CameraSubject = hum end
+
+            -- Return to original position
+            if OldPos then
+                repeat
+                    if not rp.Parent then break end
+                    rp.CFrame = OldPos * CFrame.new(0, .5, 0)
+                    char:SetPrimaryPartCFrame(OldPos * CFrame.new(0, .5, 0))
+                    hum:ChangeState("GettingUp")
+                    for _, part in pairs(char:GetChildren()) do
+                        if part:IsA("BasePart") then
+                            part.Velocity = Vector3.new()
+                            part.RotVelocity = Vector3.new()
+                        end
+                    end
+                    task.wait()
+                until (rp.Position - OldPos.p).Magnitude < 25
+            end
+            workspace.FallenPartsDestroyHeight = FPDH
+        end
+
         while NEXBYTE._FlingActive do
             local validTargets = {}
             for name, plr in pairs(NEXBYTE._SelectedTargets) do
@@ -562,25 +679,29 @@ NXFlingTab:CreateButton({name="START FLING", callback=function()
             end
             for _, plr in pairs(validTargets) do
                 if not NEXBYTE._FlingActive then break end
-                local char = Player.Character
-                local hum = char and char:FindFirstChildOfClass("Humanoid")
-                local rp = hum and hum.RootPart
-                local tChar = plr.Character
-                local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
-                local tHead = tChar and tChar:FindFirstChild("Head")
-                if rp and tRoot then
-                    if tHead then workspace.CurrentCamera.CameraSubject = tHead else workspace.CurrentCamera.CameraSubject = tRoot end
-                    rp.Velocity = Vector3.new(9e7, 9e7*10, 9e7)
-                    rp.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
-                    task.wait(0.5)
-                    if rp.Parent then
-                        rp.Velocity = Vector3.new()
-                        rp.RotVelocity = Vector3.new()
-                        if hum then workspace.CurrentCamera.CameraSubject = hum end
-                    end
-                end
+                FlingTarget(plr)
+                task.wait(0.2)
             end
             task.wait(0.5)
+        end
+
+        -- Final cleanup
+        hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+        if hum then workspace.CurrentCamera.CameraSubject = hum end
+        workspace.FallenPartsDestroyHeight = FPDH
+        if OldPos and rp.Parent then
+            repeat
+                rp.CFrame = OldPos * CFrame.new(0, .5, 0)
+                char:SetPrimaryPartCFrame(OldPos * CFrame.new(0, .5, 0))
+                hum:ChangeState("GettingUp")
+                for _, part in pairs(char:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.Velocity = Vector3.new()
+                        part.RotVelocity = Vector3.new()
+                    end
+                end
+                task.wait()
+            until (rp.Position - OldPos.p).Magnitude < 25
         end
     end)
 end})
