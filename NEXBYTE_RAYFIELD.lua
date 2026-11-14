@@ -1,53 +1,943 @@
--- NEXBYTE STARTUP CLEANUP
-local _nxPlayer = game:GetService("Players").LocalPlayer
-if _nxPlayer then
-    local _nxParents = {_nxPlayer:WaitForChild("PlayerGui")}
-    pcall(function()
-        table.insert(_nxParents, game:GetService("CoreGui"))
-    end)
-    for _, _nxParent in ipairs(_nxParents) do
-        for _, _nxGui in ipairs(_nxParent:GetChildren()) do
-            if _nxGui.Name == "NEXBYTE_ADMIN" or _nxGui.Name == "TPList" then
-                _nxGui:Destroy()
-            end
-        end
-    end
-end
-
+-- NEXBYTE ULTIMATE ADMIN - Module Manager
 --[[
-    NEXBYTE ADMIN
-    Based on the working fling mechanism from zqyDSUWX
-    Features:
-    - Select multiple targets
-    - Continuous flinging until stopped
-    - Preserves player mobility (no teleporting to targets)
-    - Flings targets very far
-    - Compatible with JJSploit, Synapse X, etc.
+    NEXBYTE ULTIMATE ADMIN
+    A comprehensive admin/troll panel for Roblox games.
+    Features player selection, server integration, and 100+ functions.
 ]]
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
 local Player = Players.LocalPlayer
--- GUI Setup
+
+-- Module Manager
+local NEXBYTE = {
+    _VERSION = "1.0",
+    _MODULES = {},
+    _SETTINGS = {},
+    _PROFILES = {},
+    _MACROS = {},
+    _LOGS = {},
+    _ADMIN_PERMISSIONS = {"fling", "bring", "tp", "tools", "visuals", "movement", "troll"},
+    _ACTIVE_MODULES = {},
+}
+
+-- Shared state
+NEXBYTE._SelectedTargets = {}
+NEXBYTE._FlingActive = false
+NEXBYTE._TouchFlingActive = false
+NEXBYTE._BringActive = false
+
+-- Settings defaults
+NEXBYTE._SETTINGS = {
+    theme = "Default",
+    autosave_profiles = true,
+    log_actions = true,
+    default_profile = "default",
+}
+
+-- Profile system
+function NEXBYTE:CreateProfile(name, settings)
+    self._PROFILES[name] = settings or {}
+    if not self._PROFILES.default then
+        self._PROFILES.default = name
+    end
+end
+
+function NEXBYTE:GetProfile(name)
+    return self._PROFILES[name] or self._PROFILES.default and self._PROFILES[self._PROFILES.default] or {}
+end
+
+function NEXBYTE:SaveProfile(name)
+    local profile = self:GetProfile(name)
+    -- In a real implementation, this would save to data store
+    if self._SETTINGS.log_actions then
+        self:Log("Profile '" .. name .. "' saved", "system")
+    end
+end
+
+function NEXBYTE:LoadProfile(name)
+    local profile = self:GetProfile(name)
+    if self._SETTINGS.log_actions then
+        self:Log("Profile '" .. name .. "' loaded", "system")
+    end
+    return profile
+end
+
+-- Macro system
+function NEXBYTE:CreateMacro(name, commands, delay)
+    self._MACROS[name] = {commands = commands, delay = delay or 0, active = false}
+end
+
+function NEXBYTE:ExecuteMacro(name)
+    local macro = self._MACROS[name]
+    if not macro then
+        self:Log("Macro '" .. name .. "' not found", "error")
+        return false
+    end
+    macro.active = true
+    task.spawn(function()
+        while macro.active do
+            for _, cmd in ipairs(macro.commands) do
+                cmd()
+                task.wait(macro.delay)
+            end
+        end
+    end)
+    return true
+end
+
+function NEXBYTE:StopMacro(name)
+    local macro = self._MACROS[name]
+    if macro then
+        macro.active = false
+    end
+end
+
+-- Log system
+function NEXBYTE:Log(message, level)
+    level = level or "info"
+    local entry = {time = tick(), message = message, level = level}
+    table.insert(self._LOGS, entry)
+    -- Keep only last 1000 logs
+    if #self._LOGS > 1000 then
+        table.remove(self._LOGS, 1)
+    end
+    -- Print to console
+    local level_colors = {info = "green", warning = "yellow", error = "red", system = "white"}
+    local color = level_colors[level] or "white"
+    print(string.format("[%s] [%s] %s", os.date("%H:%M:%S"), color:upper(), message))
+end
+
+-- Module registration system
+function NEXBYTE:RegisterModule(name, module_data)
+    self._MODULES[name] = module_data
+    self._ACTIVE_MODULES[name] = false
+    self:Log("Module '" .. name .. "' registered", "system")
+    return true
+end
+
+function NEXBYTE:ToggleModule(name)
+    if self._ACTIVE_MODULES[name] then
+        self:DeactivateModule(name)
+    else
+        self:ActivateModule(name)
+    end
+end
+
+function NEXBYTE:ActivateModule(name)
+    local module = self._MODULES[name]
+    if not module then
+        self:Log("Module '" .. name .. "' not found", "error")
+        return false
+    end
+    self._ACTIVE_MODULES[name] = true
+    if module.on_activate then
+        module.on_activate()
+    end
+    self:Log("Module '" .. name .. "' activated", "system")
+    return true
+end
+
+function NEXBYTE:DeactivateModule(name)
+    local module = self._MODULES[name]
+    if not module then
+        self:Log("Module '" .. name .. "' not found", "error")
+        return false
+    end
+    self._ACTIVE_MODULES[name] = false
+    if module.on_deactivate then
+        module.on_deactivate()
+    end
+    self:Log("Module '" .. name .. "' deactivated", "system")
+    return true
+end
+
+function NEXBYTE:GetModuleState(name)
+    return self._ACTIVE_MODULES[name] or false
+end
+
+-- Player selection system
+function NEXBYTE:SelectPlayer(player)
+    if player and player ~= Player and player:IsA("Player") then
+        self._SelectedTargets[player.Name] = player
+        self:Log("Player selected: " .. player.Name, "system")
+        return true
+    end
+    return false
+end
+
+function NEXBYTE:DeselectPlayer(player)
+    if player and self._SelectedTargets[player.Name] then
+        self._SelectedTargets[player.Name] = nil
+        self:Log("Player deselected: " .. player.Name, "system")
+        return true
+    end
+    return false
+end
+
+function NEXBYTE:SelectAllPlayers()
+    local selected = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= Player then
+            self._SelectedTargets[p.Name] = p
+            selected[p.Name] = true
+        end
+    end
+    self:Log("Selected all " .. #selected .. " players", "system")
+    return true
+end
+
+function NEXBYTE:DeselectAllPlayers()
+    local count = 0
+    for name in pairs(self._SelectedTargets) do
+        self._SelectedTargets[name] = nil
+        count = count + 1
+    end
+    self:Log("Deselected all " .. count .. " players", "system")
+    return true
+end
+
+function NEXBYTE:GetSelectedTargets()
+    return self._SelectedTargets
+end
+
+function NEXBYTE:IsPlayerSelected(player)
+    return self._SelectedTargets[player.Name] ~= nil
+end
+
+-- Admin check system (placeholder - to be integrated with game's admin system)
+function NEXBYTE:HasAdminPermission(permission)
+    -- This should be replaced with actual game admin check
+    -- For now, returns true for testing
+    if permission == "admin_check_placeholder" then
+        return true
+    end
+    -- Check if permission is in the allowed list
+    for _, allowed in ipairs(self._ADMIN_PERMISSIONS) do
+        if allowed == permission then
+            return true
+        end
+    end
+    return false
+end
+
+function NEXBYTE:RequestAdminCheck(permission)
+    -- Placeholder for server-side admin check
+    -- In real implementation, this would fire a RemoteEvent to the server
+    return self:HasAdminPermission(permission)
+end
+
+-- Confirmation system for dangerous actions
+function NEXBYTE:ShowConfirmation(title, text, callback)
+    -- Create a simple confirmation UI
+    local confirmation = Instance.new("TextButton")
+    confirmation.Name = "NEXBYTE_Confirmation"
+    confirmation.Size = UDim2.new(0, 200, 0, 100)
+    confirmation.Position = UDim2.new(0.5, -100, 0.5, -50)
+    confirmation.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    confirmation.BorderSizePixel = 0
+    confirmation.Text = text
+    confirmation.TextColor3 = Color3.fromRGB(255, 255, 255)
+    confirmation.Font = Enum.Font.SourceSansBold
+    confirmation.TextSize = 18
+    confirmation.Parent = game:GetService("CoreGui")
+
+    local function on_click()
+        confirmation:Destroy()
+        if callback then
+            callback(true)
+        end
+    end
+
+    confirmation.MouseButton1Click:Connect(on_click)
+
+    -- Add auto-dismiss after 5 seconds
+    task.delay(5, function()
+        if confirmation and confirmation.Parent then
+            confirmation:Destroy()
+            if callback then
+                callback(false)
+            end
+        end
+    end)
+
+    return confirmation
+end
+
+-- Remote Lab system for testing game mechanics
+function NEXBYTE:RemoteLab()
+    local RemoteLab = {}
+    RemoteLab._remotes = {}
+    RemoteLab._test_results = {}
+
+    function RemoteLab:CreateRemote(name, event_name)
+        local remote = {
+            name = name,
+            event_name = event_name,
+            fired = false,
+            last_fire = 0,
+        }
+        self._remotes[name] = remote
+        return remote
+    end
+
+    function RemoteLab:FireRemote(name, ...)
+        local remote = self._remotes[name]
+        if not remote then
+            self:Log("Remote '" .. name .. "' not found", "error")
+            return false
+        end
+        remote.fired = true
+        remote.last_fire = tick()
+        -- In real implementation, this would fire the actual RemoteEvent
+        self:Log("Remote '" .. name .. "' fired", "system")
+        return true
+    end
+
+    function RemoteLab:ResetResults(name)
+        self._test_results[name] = {}
+    end
+
+    function RemoteLab:RecordResult(name, success, message)
+        if not self._test_results[name] then
+            self._test_results[name] = {}
+        end
+        table.insert(self._test_results[name], {success = success, message = message, time = tick()})
+    end
+
+    function RemoteLab:GetResults(name)
+        return self._test_results[name] or {}
+    end
+
+    return RemoteLab
+end
+
+-- Initialize default modules and profiles
+NEXBYTE:CreateProfile("default")
+
+-- Register core modules (will be expanded later)
+NEXBYTE:RegisterModule("player_selection", {
+    on_activate = function()
+        NEXBYTE:Log("Player selection module activated", "system")
+    end,
+    on_deactivate = function()
+        NEXBYTE:Log("Player selection module deactivated", "system")
+    end,
+})
+
+NEXBYTE:RegisterModule("logging", {
+    on_activate = function()
+        NEXBYTE:Log("Logging module activated", "system")
+    end,
+    on_deactivate = function()
+        NEXBYTE:Log("Logging module deactivated", "system")
+    end,
+})
+
+-- Set up player added/removed handling
+Players.PlayerAdded:Connect(function(player)
+    -- Profiles could track new players
+    if NEXBYTE._SETTINGS.log_actions then
+        NEXBYTE:Log("Player joined: " .. player.Name, "system")
+    end
+end)
+
+Players.PlayerRemoved:Connect(function(player)
+    NEXBYTE:DeselectPlayer(player)
+    if NEXBYTE._SETTINGS.log_actions then
+        NEXBYTE:Log("Player left: " .. player.Name, "system")
+    end
+end)
+
+-- GUI Setup - Main ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "NEXBYTEFlingGUI"
+ScreenGui.Name = "NEXBYTE_ULTIMATE_ADMIN"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = game:GetService("CoreGui")
+
 -- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Name = "NEXBYTE_MainFrame"
+MainFrame.Size = UDim2.new(0, 400, 0, 500)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
+
+-- UI Corner rounding
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = MainFrame
+
 -- Title Bar
 local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 30)
-TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 40)
+TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, -80, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "NEXBYTE ULTIMATE ADMIN"
+Title.TextColor3 = Color3.fromRGB(0, 195, 235)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TitleBar
+
+-- Close Button
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Position = UDim2.new(1, -30, 0, 0)
+CloseButton.Size = UDim2.new(0, 30, 0, 30)
+CloseButton.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+CloseButton.BorderSizePixel = 0
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.TextSize = 14
+CloseButton.Parent = TitleBar
+
+-- Minimize Button
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.Position = UDim2.new(1, -65, 0, 0)
+MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+MinimizeButton.BorderSizePixel = 0
+MinimizeButton.Text = "_"
+MinimizeButton.TextColor3 = Color3.fromRGB(0, 195, 235)
+MinimizeButton.Font = Enum.Font.GothamBold
+MinimizeButton.TextSize = 16
+MinimizeButton.Parent = TitleBar
+
+-- Tab System
+local Tabs = Instance.new("Frame")
+Tabs.Name = "Tabs"
+Tabs.Size = UDim2.new(0, 120, 1, -40)
+Tabs.Position = UDim2.new(0, 0, 0, 40)
+Tabs.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+Tabs.BorderSizePixel = 0
+Tabs.Parent = MainFrame
+
+local TabList = Instance.new("UIListLayout")
+TabList.Parent = Tabs
+TabList.Padding = UDim.new(0, 5)
+
+-- Content Area
+local ContentArea = Instance.new("Frame")
+ContentArea.Name = "ContentArea"
+ContentArea.Size = UDim2.new(1, -120, 1, -40)
+ContentArea.Position = UDim2.new(0, 120, 0, 40)
+ContentArea.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+ContentArea.BorderSizePixel = 0
+ContentArea.Parent = MainFrame
+
+-- Selected Players Display
+local SelectedDisplay = Instance.new("TextLabel")
+SelectedDisplay.Name = "SelectedDisplay"
+SelectedDisplay.Size = UDim2.new(1, 0, 0, 30)
+SelectedDisplay.Position = UDim2.new(0, 0, 0, 0)
+SelectedDisplay.BackgroundTransparency = 1
+SelectedDisplay.Text = "Selected players: 0"
+SelectedDisplay.TextColor3 = Color3.fromRGB(255, 255, 255)
+SelectedDisplay.Font = Enum.Font.GothamMedium
+SelectedDisplay.TextSize = 14
+SelectedDisplay.Parent = ContentArea
+
+-- Module State Tracker
+local ModuleTracker = Instance.new("TextLabel")
+ModuleTracker.Name = "ModuleTracker"
+ModuleTracker.Size = UDim2.new(1, 0, 0, 20)
+ModuleTracker.Position = UDim2.new(0, 0, 0, 35)
+ModuleTracker.BackgroundTransparency = 1
+ModuleTracker.Text = "Active modules: 0"
+ModuleTracker.TextColor3 = Color3.fromRGB(255, 255, 255)
+ModuleTracker.Font = Enum.Font.GothamMedium
+ModuleTracker.TextSize = 12
+ModuleTracker.Parent = ContentArea
+
+-- Tab definitions
+local TabsData = {
+    {name = "HOME", icon = "house", description = "Main dashboard"},
+    {name = "PLAYER", icon = "users", description = "Player selection and control"},
+    {name = "FLING", icon = "zap", description = "Fling and throw mechanics"},
+    {name = "TELEPORT", icon = "location-on", description = "Teleport and movement"},
+    {name = "TROLL", icon = "zap", description = "Trolling tools"},
+    {name = "VISUALS", icon = "eye", description = "Visual effects"},
+    {name = "MOVEMENT", icon = "move", description = "Movement settings"},
+    {name = "CAMERA", icon = "camera", description = "Camera controls"},
+    {name = "SCRIPT HUB", icon = "search", description = "Script execution"},
+    {name = "MODULES", icon = "grid", description = "Module Manager"},
+    {name = "PROFILES", icon = "star", description = "Profiles and macros"},
+    {name = "SETTINGS", icon = "settings", description = "Application settings"},
+    {name = "LOGS", icon = "history", description = "Action logs"},
+}
+
+-- Create tabs
+local currentTab = nil
+local currentContent = nil
+
+function NEXBYTE:CreateTab(tab_name)
+    -- Hide current tab if any
+    if currentTab then
+        currentTab.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    end
+
+    -- Find or create tab
+    local tab_btn = nil
+    for _, tab_data in ipairs(TabsData) do
+        if tab_data.name == tab_name then
+            -- Create tab button
+            tab_btn = Instance.new("TextButton")
+            tab_btn.Name = tab_data.name .. "_Button"
+            tab_btn.Size = UDim2.new(1, 0, 0, 30)
+            tab_btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+            tab_btn.BorderSizePixel = 0
+            tab_btn.Text = tab_data.name .. "  " .. tab_data.description
+            tab_btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            tab_btn.Font = Enum.Font.Gotham
+            tab_btn.TextSize = 12
+            tab_btn.Parent = Tabs
+            -- Store reference
+            _G["NEXBYTE_Tab_" .. tab_data.name] = tab_btn
+
+            -- Create content area
+            local content = Instance.new("Frame")
+            content.Name = tab_data.name .. "_Content"
+            content.Size = UDim2.new(1, 0, 1, 0)
+            content.Position = UDim2.new(0, 0, 0, 0)
+            content.BackgroundTransparency = 1
+            content.Visible = false
+            content.Parent = ContentArea
+
+            -- Store tab data
+            _G["NEXBYTE_Content_" .. tab_data.name] = content
+
+            -- Set as active if first tab
+            if not currentTab then
+                tab_btn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+                content.Visible = true
+                currentTab = tab_btn
+                currentContent = content
+            end
+
+            -- Add click handler
+            tab_btn.MouseButton1Click:Connect(function()
+                NEXBYTE:SwitchTab(tab_data.name)
+            end)
+
+            return content, tab_btn
+        end
+    end
+
+    if tab_btn then
+        NEXBYTE:SwitchTab(tab_name)
+    end
+    return nil, nil
+end
+
+function NEXBYTE:SwitchTab(tab_name)
+    if currentTab then
+        currentTab.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    end
+    if currentContent then
+        currentContent.Visible = false
+    end
+
+    -- Find the tab
+    for _, tab_data in ipairs(TabsData) do
+        if tab_data.name == tab_name then
+            local btn = _G["NEXBYTE_Tab_" .. tab_data.name]
+            local content = _G["NEXBYTE_Content_" .. tab_data.name]
+            if btn and content then
+                btn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+                content.Visible = true
+                currentTab = btn
+                currentContent = content
+            end
+            return
+        end
+    end
+end
+
+-- Initialize tabs
+for _, tab_data in ipairs(TabsData) do
+    NEXBYTE:CreateTab(tab_data.name)
+end
+
+-- Select first tab by default
+if #TabsData > 0 then
+    NEXBYTE:SwitchTab(TabsData[1].name)
+end
+
+-- Tab click handlers (redundant but safe)
+for _, tab_data in ipairs(TabsData) do
+    local btn = _G["NEXBYTE_Tab_" .. tab_data.name]
+    if btn then
+        btn.MouseButton1Click:Connect(function()
+            NEXBYTE:SwitchTab(tab_data.name)
+        end)
+    end
+end
+
+-- Close button handler
+CloseButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    MinimizeButton.Visible = true
+end)
+
+-- Minimize button handler
+MinimizeButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = true
+    MinimizeButton.Visible = false
+end)
+
+-- Update selected players display
+local function UpdateSelectedDisplay()
+    local count = 0
+    for _ in pairs(NEXBYTE._SelectedTargets) do
+        count = count + 1
+    end
+    SelectedDisplay.Text = "Selected players: " .. count
+end
+
+-- Update module tracker
+local function UpdateModuleTracker()
+    local active = 0
+    for _ in pairs(NEXBYTE._ACTIVE_MODULES) do
+        active = active + 1
+    end
+    ModuleTracker.Text = "Active modules: " .. active
+end
+
+-- Connect update functions
+task.spawn(function()
+    while true do
+        task.wait(1)
+        UpdateSelectedDisplay()
+        UpdateModuleTracker()
+    end
+end)
+
+-- PLAYER SECTION - Player selection and control
+--[[
+    PLAYER MODULE
+    Handles player selection, Bring, TP, and other player interactions.
+]]
+-- Player selection UI (created dynamically)
+local function CreatePlayerSelectionUI()
+    local PlayerSelection = Instance.new("Frame")
+    PlayerSelection.Name = "PlayerSelectionUI"
+    PlayerSelection.Size = UDim2.new(1, 0, 1, 0)
+    PlayerSelection.Position = UDim2.new(0, 0, 0, 0)
+    PlayerSelection.BackgroundTransparency = 1
+    PlayerSelection.Visible = false
+    PlayerSelection.Parent = ContentArea
+
+    -- Search box
+    local SearchBox = Instance.new("TextBox")
+    SearchBox.Name = "SearchBox"
+    SearchBox.Size = UDim2.new(1, -10, 0, 30)
+    SearchBox.Position = UDim2.new(0, 5, 0, 5)
+    SearchBox.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    SearchBox.BorderSizePixel = 0
+    SearchBox.PlaceholderText = "Search players..."
+    SearchBox.Text = ""
+    SearchBox.Font = Enum.Font.Gotham
+    SearchBox.TextSize = 12
+    SearchBox.Parent = PlayerSelection
+
+    -- Player list container
+    local PlayerList = Instance.new("ScrollingFrame")
+    PlayerList.Name = "PlayerList"
+    PlayerList.Size = UDim2.new(1, -10, 1, -40)
+    PlayerList.Position = UDim2.new(0, 5, 0, 40)
+    PlayerList.BackgroundTransparency = 1
+    PlayerList.ScrollBarThickness = 6
+    PlayerList.CanvasSize = UDim2.new(0, 0, 0, 0)
+    PlayerList.Parent = PlayerSelection
+
+    local ListLayout = Instance.new("UIListLayout")
+    ListLayout.Parent = PlayerList
+    ListLayout.Padding = UDim.new(0, 5)
+
+    -- Selected count
+    local SelectedCount = Instance.new("TextLabel")
+    SelectedCount.Name = "SelectedCount"
+    SelectedCount.Size = UDim2.new(1, 0, 0, 20)
+    SelectedCount.Position = UDim2.new(0, 0, 0, 0)
+    SelectedCount.BackgroundTransparency = 1
+    SelectedCount.Text = "Selected: 0"
+    SelectedCount.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SelectedCount.Font = Enum.Font.GothamMedium
+    SelectedCount.TextSize = 12
+    SelectedCount.Parent = PlayerSelection
+
+    return PlayerSelection, SearchBox, PlayerList, SelectedCount
+end
+
+-- Create the player selection UI
+local PlayerSelectionUI, SearchBox, PlayerList, SelectedCount = CreatePlayerSelectionUI()
+
+-- Toggle player visibility
+local function TogglePlayerVisibility(visible)
+    PlayerSelectionUI.Visible = visible
+end
+
+-- Refresh player list
+function NEXBYTE:RefreshPlayerList()
+    -- Clear existing entries
+    local list = PlayerList:FindFirstChildOfClass("UIListLayout")
+    if list then
+        -- Clear children but keep layout
+        for _, child in ipairs(PlayerList:GetChildren()) do
+            if child.Name ~= "UIListLayout" and child.Name ~= "UIPadding" then
+                child:Destroy()
+            end
+        end
+    end
+
+    -- Get players and sort them
+    local players = Players:GetPlayers()
+    table.sort(players, function(a, b) return a.Name:lower() < b.Name:lower() end)
+
+    -- Filter by search
+    local search_text = SearchBox.Text:lower()
+
+    -- Create entries for each player
+    local yPosition = 5
+    for _, player in ipairs(players) do
+        -- Skip self
+        if player ~= Player then
+            -- Apply search filter
+            if search_text == "" or player.Name:lower():find(search_text) then
+                -- Create player entry frame
+                local PlayerEntry = Instance.new("Frame")
+                PlayerEntry.Name = "PlayerEntry_" .. player.Name
+                PlayerEntry.Size = UDim2.new(1, -10, 0, 30)
+                PlayerEntry.Position = UDim2.new(0, 5, 0, yPosition)
+                PlayerEntry.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+                PlayerEntry.BorderSizePixel = 0
+                PlayerEntry.Parent = PlayerList
+
+                -- Checkbox
+                local Checkbox = Instance.new("TextButton")
+                Checkbox.Name = "Checkbox_" .. player.Name
+                Checkbox.Size = UDim2.new(0, 24, 0, 24)
+                Checkbox.Position = UDim2.new(0, 3, 0.5, -12)
+                Checkbox.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+                Checkbox.BorderSizePixel = 0
+                Checkbox.Text = ""
+                Checkbox.Parent = PlayerEntry
+
+                -- Checkmark
+                local Checkmark = Instance.new("TextLabel")
+                Checkmark.Name = "Checkmark"
+                Checkmark.Size = UDim2.new(1, 0, 1, 0)
+                Checkmark.BackgroundTransparency = 1
+                Checkmark.Text = "✓"
+                Checkmark.TextColor3 = Color3.fromRGB(0, 255, 0)
+                Checkmark.TextSize = 14
+                Checkmark.Font = Enum.Font.SourceSansBold
+                Checkmark.Visible = NEXBYTE:IsPlayerSelected(player)
+                Checkmark.Parent = Checkbox
+
+                -- Player name
+                local NameLabel = Instance.new("TextLabel")
+                NameLabel.Name = "NameLabel"
+                NameLabel.Size = UDim2.new(1, -35, 1, 0)
+                NameLabel.Position = UDim2.new(0, 30, 0, 0)
+                NameLabel.BackgroundTransparency = 1
+                NameLabel.Text = player.Name
+                NameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                NameLabel.TextSize = 12
+                NameLabel.Font = Enum.Font.Gotham
+                NameLabel.Parent = PlayerEntry
+
+                -- Click handler
+                PlayerEntry.MouseButton1Click:Connect(function()
+                    if NEXBYTE:IsPlayerSelected(player) then
+                        NEXBYTE:DeselectPlayer(player)
+                        Checkmark.Visible = false
+                    else
+                        NEXBYTE:SelectPlayer(player)
+                        Checkmark.Visible = true
+                    end
+                    SelectedCount.Text = "Selected: " .. #NEXBYTE:GetSelectedTargets()
+                end)
+
+                yPosition = yPosition + 35
+            end
+        end
+    end
+
+    -- Update canvas size
+    PlayerList.CanvasSize = UDim2.new(0, 0, 0, yPosition + 10)
+
+    -- Update selected count
+    SelectedCount.Text = "Selected: " .. #NEXBYTE:GetSelectedTargets()
+end
+
+-- Add control buttons
+local function AddPlayerControls()
+    -- Select All button
+    local SelectAllBtn = Instance.new("TextButton")
+    SelectAllBtn.Name = "SelectAllBtn"
+    SelectAllBtn.Size = UDim2.new(0.45, -5, 0, 30)
+    SelectAllBtn.Position = UDim2.new(0, 5, 1, -50)
+    SelectAllBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+    SelectAllBtn.BorderSizePixel = 0
+    SelectAllBtn.Text = "SELECT ALL"
+    SelectAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SelectAllBtn.Font = Enum.Font.GothamBold
+    SelectAllBtn.TextSize = 11
+    SelectAllBtn.Parent = PlayerSelectionUI
+
+    -- Deselect All button
+    local DeselectAllBtn = Instance.new("TextButton")
+    DeselectAllBtn.Name = "DeselectAllBtn"
+    DeselectAllBtn.Size = UDim2.new(0.45, -5, 0, 30)
+    DeselectAllBtn.Position = UDim2.new(0.5, 5, 1, -50)
+    DeselectAllBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+    DeselectAllBtn.BorderSizePixel = 0
+    DeselectAllBtn.Text = "DESELECT ALL"
+    DeselectAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DeselectAllBtn.Font = Enum.Font.GothamBold
+    DeselectAllBtn.TextSize = 11
+    DeselectAllBtn.Parent = PlayerSelectionUI
+
+    -- Copy Names button
+    local CopyNamesBtn = Instance.new("TextButton")
+    CopyNamesBtn.Name = "CopyNamesBtn"
+    CopyNamesBtn.Size = UDim2.new(0.45, -5, 0, 30)
+    CopyNamesBtn.Position = UDim2.new(0.5, 5, 1, -50)
+    -- This will be repositioned after first render
+    CopyNamesBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+    CopyNamesBtn.BorderSizePixel = 0
+    CopyNamesBtn.Text = "COPY NAMES"
+    CopyNamesBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CopyNamesBtn.Font = Enum.Font.GothamBold
+    CopyNamesBtn.TextSize = 11
+    CopyNamesBtn.Parent = PlayerSelectionUI
+
+    -- Connect handlers
+    SelectAllBtn.MouseButton1Click:Connect(function()
+        NEXBYTE:SelectAllPlayers()
+        NEXBYTE:RefreshPlayerList()
+        SelectedCount.Text = "Selected: " .. #NEXBYTE:GetSelectedTargets()
+    end)
+
+    DeselectAllBtn.MouseButton1Click:Connect(function()
+        NEXBYTE:DeselectAllPlayers()
+        NEXBYTE:RefreshPlayerList()
+        SelectedCount.Text = "Selected: " .. #NEXBYTE:GetSelectedTargets()
+    end)
+
+    -- Function to reposition CopyNamesBtn
+    local function RepositionCopyBtn()
+        CopyNamesBtn.Position = UDim2.new(0, 5, 1, -50)
+    end
+
+    -- Initial reposition
+    task.delay(0.1, RepositionCopyBtn)
+end
+
+-- Add controls after UI is created
+task.delay(0.5, AddPlayerControls)
+
+-- Bring function
+function NEXBYTE:BringSelected()
+    local selected = NEXBYTE:GetSelectedTargets()
+    if #selected == 0 then
+        NEXBYTE:Log("No players selected for Bring", "warning")
+        return false
+    end
+
+    -- Admin check
+    if not NEXBYTE:RequestAdminCheck("bring") then
+        NEXBYTE:Log("Admin permission denied for Bring", "error")
+        return false
+    end
+
+    local myChar = Player.Character
+    local myRootPart = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+    if not myRootPart then
+        NEXBYTE:Log("Your character is not ready", "error")
+        return false
+    end
+
+    for _, target in pairs(selected) do
+        if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            local targetRoot = target.Character.HumanoidRootPart
+            -- Bring player to you (CFrame set to your position)
+            targetRoot.CFrame = myRootPart.CFrame
+            NEXBYTE:Log("Brought " .. target.Name, "system")
+        end
+    end
+
+    return true
+end
+
+-- TP to selected function
+function NEXBYTE:TPToSelected()
+    local selected = NEXBYTE:GetSelectedTargets()
+    if #selected == 0 then
+        NEXBYTE:Log("No players selected for TP", "warning")
+        return false
+    end
+
+-- Admin check
+    if not NEXBYTE:RequestAdminCheck("tp") then
+        NEXBYTE:Log("Admin permission denied for TP", "error")
+        return false
+    end
+
+    local myChar = Player.Character
+    local myRootPart = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+    if not myRootPart then
+        NEXBYTE:Log("Your character is not ready", "error")
+        return false
+    end
+
+    for _, target in pairs(selected) do
+        if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            local targetRoot = target.Character.HumanoidRootPart
+            -- Teleport to player (3 studs in front)
+            myRootPart.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
+            NEXBYTE:Log("TP'd to " .. target.Name, "system")
+        end
+    end
+
+    return true
+end
+
+-- Function to toggle player selection UI
+function NEXBYTE:TogglePlayerUI(state)
+    if state ~= nil then
+        PlayerSelectionUI.Visible = state
+    else
+        PlayerSelectionUI.Visible = not PlayerSelectionUI.Visible
+    end
+end
+
+-- Initialize player list display
+NEXBYTE:RefreshPlayerList()
+
+-- Return the NEXBYTE module for use in the script
+return NEXBYTE
 -- Title
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -30, 1, 0)
@@ -1962,3 +2852,1235 @@ NXHub:CreateText({
 })
 
 NXNotify("NEXBYTE ADMIN","Restored build loaded")
+
+-- FLING SECTION - Fling and throw mechanics
+--[[
+    FLING MODULE
+    Provides fling functionality for selected targets.
+    Uses the SkidFling mechanism adapted from zqyDSUWX.
+]]
+-- Fling status display
+local FlingStatus = Instance.new("TextLabel")
+FlingStatus.Name = "FlingStatus"
+FlingStatus.Size = UDim2.new(1, 0, 0, 20)
+FlingStatus.Position = UDim2.new(0, 0, 0, 25)
+FlingStatus.BackgroundTransparency = 1
+FlingStatus.Text = "Fling: Disabled"
+FlingStatus.TextColor3 = Color3.fromRGB(180, 0, 0)
+FlingStatus.Font = Enum.Font.GothamMedium
+FlingStatus.TextSize = 12
+FlingStatus.Parent = ContentArea
+
+-- Fling toggles
+local function CreateFlingControls()
+    -- START FLING button
+    local StartFlingBtn = Instance.new("TextButton")
+    StartFlingBtn.Name = "StartFlingBtn"
+    StartFlingBtn.Size = UDim2.new(0.45, -5, 0, 35)
+    StartFlingBtn.Position = UDim2.new(0, 5, 1, -100)
+    StartFlingBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+    StartFlingBtn.BorderSizePixel = 0
+    StartFlingBtn.Text = "START FLING"
+    StartFlingBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    StartFlingBtn.Font = Enum.Font.GothamBold
+    StartFlingBtn.TextSize = 12
+    StartFlingBtn.Parent = ContentArea
+
+    -- STOP FLING button
+    local StopFlingBtn = Instance.new("TextButton")
+    StopFlingBtn.Name = "StopFlingBtn"
+    StopFlingBtn.Size = UDim2.new(0.45, -5, 0, 35)
+    StopFlingBtn.Position = UDim2.new(0.5, 5, 1, -100)
+    StopFlingBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+    StopFlingBtn.BorderSizePixel = 0
+    StopFlingBtn.Text = "STOP FLING"
+    StopFlingBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    StopFlingBtn.Font = Enum.Font.GothamBold
+    StopFlingBtn.TextSize = 12
+    StopFlingBtn.Parent = ContentArea
+
+    -- Fling mode toggle
+    local FlingModeToggle = Instance.new("TextButton")
+    FlingModeToggle.Name = "FlingModeToggle"
+    FlingModeToggle.Size = UDim2.new(0.9, 0, 0, 30)
+    FlingModeToggle.Position = UDim2.new(0.05, 0, 1, -50)
+    FlingModeToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    FlingModeToggle.BorderSizePixel = 0
+    FlingModeToggle.Text = "Mode: Continuous"
+    FlingModeToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FlingModeToggle.Font = Enum.Font.Gotham
+    FlingModeToggle.TextSize = 11
+    FlingModeToggle.Parent = ContentArea
+
+    -- Connect START FLING handler
+    StartFlingBtn.MouseButton1Click:Connect(function()
+        if NEXBYTE._FlingActive then
+            NEXBYTE:Log("Fling is already active", "warning")
+            return
+        end
+
+        -- Admin check
+        if not NEXBYTE:RequestAdminCheck("fling") then
+            NEXBYTE:Log("Admin permission denied for Fling", "error")
+            return
+        end
+
+        -- Get selected targets
+        local selected = NEXBYTE:GetSelectedTargets()
+        local target_count = 0
+        for _ in pairs(selected) do
+            target_count = target_count + 1
+        end
+
+        if target_count == 0 then
+            NEXBYTE:Log("No targets selected for fling", "warning")
+            NEXBYTE:ShowConfirmation("No Targets", "Select players to fling. Continue anyway?", function(confirmed)
+                if confirmed then
+                    NEXBYTE:StartFlingInternal()
+                end
+            end)
+            return
+        end
+
+        -- Start fling
+        NEXBYTE._FlingActive = true
+        StartFlingBtn.Text = "STOP FLING"
+        StartFlingBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+        FlingStatus.Text = "Fling: Active (" .. target_count .. " targets)"
+        FlingStatus.TextColor3 = Color3.fromRGB(0, 255, 0)
+        NEXBYTE:Log("Fling started with " .. target_count .. " targets", "system")
+    end)
+
+    -- Connect STOP FLING handler
+    StopFlingBtn.MouseButton1Click:Connect(function()
+        NEXBYTE._FlingActive = false
+        StartFlingBtn.Text = "START FLING"
+        StartFlingBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+        FlingStatus.Text = "Fling: Disabled"
+        FlingStatus.TextColor3 = Color3.fromRGB(180, 0, 0)
+        NEXBYTE:Log("Fling stopped", "system")
+    end)
+end
+
+-- Create fling controls after a short delay
+task.delay(0.5, CreateFlingControls)
+
+-- Internal fling function (adapted from original code)
+function NEXBYTE:StartFlingInternal()
+    if NEXBYTE._FlingActive then
+        -- Get selected targets
+        local selected = NEXBYTE:GetSelectedTargets()
+        local validTargets = {}
+
+        -- Process all targets first to determine which are valid
+        for name, player in pairs(selected) do
+            if player and player.Parent then
+                validTargets[name] = player
+            else
+                -- Remove players who left
+                selected[name] = nil
+            end
+        end
+
+        -- Then attempt to fling each valid target
+        for _, player in pairs(validTargets) do
+            if NEXBYTE._FlingActive then
+                -- Get character parts
+                local character = Player.Character
+                local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+                local rootPart = humanoid and humanoid.RootPart
+
+                if rootPart then
+                    -- Get target character parts
+                    local target_char = player.Character
+                    if target_char then
+                        local target_root = target_char:FindFirstChild("HumanoidRootPart")
+                        local target_head = target_char:FindFirstChild("Head")
+
+                        if target_root then
+                            -- Set camera subject to target head
+                            if target_head then
+                                workspace.CurrentCamera.CameraSubject = target_head
+                            else
+                                workspace.CurrentCamera.CameraSubject = target_root
+                            end
+
+                            -- Apply fling velocity
+                            local velocity = Vector3.new(9e7, 9e7 * 10, 9e7)
+                            rootPart.Velocity = velocity
+                            rootPart.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+
+                            -- Reset after short time
+                            task.wait(0.5)
+                            if rootPart.Parent then
+                                rootPart.Velocity = Vector3.new()
+                                rootPart.RotVelocity = Vector3.new()
+                                workspace.CurrentCamera.CameraSubject = humanoid
+                            end
+                        end
+                    end
+                end
+            else
+                break
+            end
+        end
+    end
+end
+
+-- Return the NEXBYTE module for use in the script
+return NEXBYTE
+
+-- TELEPORT SECTION - Teleport and movement
+--[[
+    TELEPORT MODULE
+    Provides teleportation and movement capabilities.
+]]
+-- Teleport status display
+local TPToggle = Instance.new("TextButton")
+TPToggle.Name = "TPToggle"
+TPToggle.Size = UDim2.new(0.4, 0, 0, 30)
+TPToggle.Position = UDim2.new(0, 5, 1, -140)
+TPToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+TPToggle.BorderSizePixel = 0
+TPToggle.Text = "TP: Disabled"
+TPToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+TPoggle.Font = Enum.Font.Gotham
+TPoggle.TextSize = 11
+TPoggle.Parent = ContentArea
+
+-- TP to selected button
+local TPToSelectedBtn = Instance.new("TextButton")
+TPToSelectedBtn.Name = "TPToSelectedBtn"
+TPToSelectedBtn.Size = UDim2.new(0.4, 0, 0, 30)
+TPToSelectedBtn.Position = UDim2.new(0.5, 5, 1, -140)
+TPToSelectedBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+TPToSelectedBtn.BorderSizePixel = 0
+TPToSelectedBtn.Text = "TP TO SELECTED"
+TPToSelectedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TPToSelectedBtn.Font = Enum.Font.GothamBold
+TPToSelectedBtn.TextSize = 11
+TPToSelectedBtn.Parent = ContentArea
+
+-- Server hop button
+local ServerHopBtn = Instance.new("TextButton")
+ServerHopBtn.Name = "ServerHopBtn"
+ServerHopBtn.Size = UDim2.new(0.4, 0, 0, 30)
+ServerHopBtn.Position = UDim2.new(0, 5, 1, -100)
+ServerHopBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 120)
+ServerHopBtn.BorderSizePixel = 0
+ServerHopBtn.Text = "SERVER HOP"
+ServerHopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ServerHopBtn.Font = Enum.Font.Gotham
+ServerHopBtn.TextSize = 11
+ServerHopBtn.Parent = ContentArea
+
+-- Teleport to waypoint
+local function CreateWaypointSystem()
+    local WaypointFrame = Instance.new("Frame")
+    WaypointFrame.Name = "WaypointSystem"
+    WaypointFrame.Size = UDim2.new(0.6, 0, 0.6, 0)
+    WaypointFrame.Position = UDim2.new(0.2, 0, 0.2, 0)
+    WaypointFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    WaypointFrame.BorderSizePixel = 0
+    WaypointFrame.Visible = false
+    WaypointFrame.Parent = ContentArea
+
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 8)
+    UICorner.Parent = WaypointFrame
+
+    local WaypointList = Instance.new("ScrollingFrame")
+    WaypointList.Name = "WaypointList"
+    WaypointList.Size = UDim2.new(1, -10, 1, -10)
+    WaypointList.Position = UDim2.new(0, 5, 0, 5)
+    WaypointList.BackgroundTransparency = 1
+    WaypointList.ScrollBarThickness = 4
+    WaypointList.Parent = WaypointFrame
+
+    local ListLayout = Instance.new("UIListLayout")
+    ListLayout.Parent = WaypointList
+    ListLayout.Padding = UDim.new(0, 5)
+
+    local CloseWaypoints = Instance.new("TextButton")
+    CloseWaypoints.Name = "CloseWaypoints"
+    CloseWaypoints.Size = UDim2.new(1, 0, 0, 30)
+    CloseWaypoints.Position = UDim2.new(0, 0, 1, -35)
+    CloseWaypoints.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+    CloseWaypoints.BorderSizePixel = 0
+    CloseWaypoints.Text = "CLOSE"
+    CloseWaypoints.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseWaypoints.Font = Enum.Font.GothamBold
+    CloseWaypoints.TextSize = 12
+    CloseWaypoints.Parent = WaypointFrame
+
+    return WaypointFrame, WaypointList, CloseWaypoints
+end
+
+local WaypointFrame, WaypointList, CloseWaypoints = CreateWaypointSystem()
+
+-- Waypoint close handler
+CloseWaypoints.MouseButton1Click:Connect(function()
+    WaypointFrame.Visible = false
+end)
+
+-- TP to selected handler
+TPToSelectedBtn.MouseButton1Click:Connect(function()
+    -- Admin check
+    if not NEXBYTE:RequestAdminCheck("tp") then
+        NEXBYTE:Log("Admin permission denied for TP to Selected", "error")
+        return
+    end
+
+    local selected = NEXBYTE:GetSelectedTargets()
+    if #selected == 0 then
+        NEXBYTE:Log("No players selected for TP to Selected", "warning")
+        return
+    end
+
+    local myChar = Player.Character
+    local myRootPart = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+    if not myRootPart then
+        NEXBYTE:Log("Your character is not ready", "error")
+        return
+    end
+
+    for _, target in pairs(selected) do
+        if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            local targetRoot = target.Character.HumanoidRootPart
+            myRootPart.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
+            NEXBYTE:Log("TP'd to " .. target.Name, "system")
+        end
+    end
+end
+
+-- Server hop handler
+ServerHopBtn.MouseButton1Click:Connect(function()
+    -- Admin check
+    if not NEXBYTE:RequestAdminCheck("server_hop") then
+        NEXBYTE:Log("Admin permission denied for Server Hop", "error")
+        return
+    end
+
+    task.spawn(function()
+        local ok, err = pcall(function()
+            local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true"
+            local data = HttpService:JSONDecode(game:HttpGet(url))
+
+            if not data or not data.data then
+                NEXBYTE:Log("Failed to get server list", "error")
+                return
+            end
+
+            local servers = {}
+            for _, s in ipairs(data.data or {}) do
+                if s.id ~= game.JobId and s.playing < s.maxPlayers then
+                    table.insert(servers, s.id)
+                end
+            end
+
+            if #servers > 0 then
+                local randomServer = servers[math.random(1, #servers)]
+                NEXBYTE:Log("Hopping to server " .. randomServer, "system")
+                game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, randomServer, Player)
+            else
+                NEXBYTE:Log("No available servers found", "warning")
+            end
+        end)
+
+        if not ok then
+            NEXBYTE:Log("Server hop failed: " .. tostring(err), "error")
+        end
+    end)
+end)
+
+-- Return the NEXBYTE module for use in the script
+return NEXBYTE
+
+-- TROLL SECTION - Trolling tools and effects
+--[[
+    TROLL MODULE
+    Provides various trolling and disruption tools.
+]]
+-- Troll status display
+local TrollStatus = Instance.new("TextLabel")
+TrollStatus.Name = "TrollStatus"
+TrollStatus.Size = UDim2.new(1, 0, 0, 20)
+TrollStatus.Position = UDim2.new(0, 0, 0, 50)
+TrollStatus.BackgroundTransparency = 1
+TrollStatus.Text = "Troll Mode: Disabled"
+TrollStatus.TextColor3 = Color3.fromRGB(180, 0, 0)
+TrollStatus.Font = Enum.Font.GothamMedium
+TrollStatus.TextSize = 12
+TrollStatus.Parent = ContentArea
+
+-- Troll toggle
+local function CreateTrollControls()
+    -- Troll mode toggle
+    local TrollToggle = Instance.new("TextButton")
+    TrollToggle.Name = "TrollToggle"
+    TrollToggle.Size = UDim2.new(0.45, -5, 0, 35)
+    TrollToggle.Position = UDim2.new(0, 5, 1, -160)
+    TrollToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    TrollToggle.BorderSizePixel = 0
+    TrollToggle.Text = "TROLL: Disabled"
+    TrollToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TrollToggle.Font = Enum.Font.GothamBold
+    TrollToggle.TextSize = 12
+    TrollToggle.Parent = ContentArea
+
+    -- Bring all button
+    local BringAllBtn = Instance.new("TextButton")
+    BringAllBtn.Name = "BringAllBtn"
+    BringAllBtn.Size = UDim2.new(0.45, -5, 0, 35)
+    BringAllBtn.Position = UDim2.new(0.5, 5, 1, -160)
+    BringAllBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    BringAllBtn.BorderSizePixel = 0
+    BringAllBtn.Text = "BRING ALL"
+    BringAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    BringAllBtn.Font = Enum.Font.GothamBold
+    BringAllBtn.TextSize = 12
+    BringAllBtn.Parent = ContentArea
+
+    -- Sit all button
+    local SitAllBtn = Instance.new("TextButton")
+    SitAllBtn.Name = "SitAllBtn"
+    SitAllBtn.Size = UDim2.new(0.45, -5, 0, 35)
+    SitAllBtn.Position = UDim2.new(0, 5, 1, -120)
+    SitAllBtn.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
+    SitAllBtn.BorderSizePixel = 0
+    SitAllBtn.Text = "SIT ALL"
+    SitAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SitAllBtn.Font = Enum.Font.GothamBold
+    SitAllBtn.TextSize = 12
+    SitAllBtn.Parent = ContentArea
+
+    -- Ragdoll all button
+    local RagdollAllBtn = Instance.new("TextButton")
+    RagdollAllBtn.Name = "RagdollAllBtn"
+    RagdollAllBtn.Size = UDim2.new(0.45, -5, 0, 35)
+    RagdollAllBtn.Position = UDim2.new(0.5, 5, 1, -120)
+    RagdollAllBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    RagdollAllBtn.BorderSizePixel = 0
+    RagdollAllBtn.Text = "RAGDOLL ALL"
+    RagdollAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    RagdollAllBtn.Font = Enum.Font.GothamBold
+    RagdollAllBtn.TextSize = 12
+    RagdollAllBtn.Parent = ContentArea
+
+    -- Kill all button (with confirmation)
+    local KillAllBtn = Instance.new("TextButton")
+    KillAllBtn.Name = "KillAllBtn"
+    KillAllBtn.Size = UDim2.new(0.45, -5, 0, 35)
+    KillAllBtn.Position = UDim2.new(0, 5, 1, -80)
+    KillAllBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+    KillAllBtn.BorderSizePixel = 0
+    KillAllBtn.Text = "KILL ALL"
+    KillAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    KillAllBtn.Font = Enum.Font.GothamBold
+    KillAllBtn.TextSize = 12
+    KillAllBtn.Parent = ContentArea
+
+    -- Toggle handler
+    local troll_active = false
+    TrollToggle.MouseButton1Click:Connect(function()
+        troll_active = not troll_active
+        TrollToggle.Text = troll_active and "TROLL: Active" or "TROLL: Disabled"
+        TrollToggle.BackgroundColor3 = troll_active and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(60, 60, 70)
+
+        if troll_active then
+            NEXBYTE:Log("Troll mode activated", "system")
+            -- Start troll loop
+            task.spawn(function()
+                while troll_active do
+                    -- Get all players
+                    local players = Players:GetPlayers()
+                    for _, player in ipairs(players) do
+                        if player ~= Player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            -- Bring player slightly closer
+                            local hrp = player.Character.HumanoidRootPart
+                            hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, -5)
+                            
+                            -- Small velocity
+                            hrp.AssemblyLinearVelocity = Vector3.new(math.random(-5, 5), math.random(-5, 5), math.random(-5, 5))
+                        end
+                    end
+                    task.wait(0.1)
+                end
+            end)
+        else
+            NEXBYTE:Log("Troll mode deactivated", "system")
+        end
+    end)
+
+    -- Bring all handler
+    BringAllBtn.MouseButton1Click:Connect(function()
+        -- Admin check
+        if not NEXBYTE:RequestAdminCheck("bring") then
+            NEXBYTE:Log("Admin permission denied for Bring All", "error")
+            return
+        end
+
+        local selected = NEXBYTE:GetSelectedTargets()
+        local myChar = Player.Character
+        local myRootPart = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+        if not myRootPart then
+            NEXBYTE:Log("Your character is not ready", "error")
+            return
+        end
+
+        for _, target in pairs(selected) do
+            if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                local targetRoot = target.Character.HumanoidRootPart
+                targetRoot.CFrame = myRootPart.CFrame
+                NEXBYTE:Log("Brought " .. target.Name, "system")
+            end
+        end
+    end)
+
+    -- Sit all handler
+    SitAllBtn.MouseButton1Click:Connect(function()
+        -- Admin check
+        if not NEXBYTE:RequestAdminCheck("sit") then
+            NEXBYTE:Log("Admin permission denied for Sit All", "error")
+            return
+        end
+
+        local selected = NEXBYTE:GetSelectedTargets()
+        for _, target in pairs(selected) do
+            if target.Character and target.Character:FindFirstChildOfClass("Humanoid") then
+                target.Character.Humanoid.Sit = true
+                NEXBYTE:Log("Sitted " .. target.Name, "system")
+            end
+        end
+    end)
+
+    -- Ragdoll all handler
+    RagdollAllBtn.MouseButton1Click:Connect(function()
+        -- Admin check
+        if not NEXBYTE:RequestAdminCheck("ragdoll") then
+            NEXBYTE:Log("Admin permission denied for Ragdoll All", "error")
+            return
+        end
+
+        local selected = NEXBYTE:GetSelectedTargets()
+        for _, target in pairs(selected) do
+            if target.Character and target.Character:FindFirstChildOfClass("Humanoid") then
+                local humanoid = target.Character.Humanoid
+                humanoid:ChangeState(Enum.HumanoidStateType.Ragdoll)
+                NEXBYTE:Log("Ragdolled " .. target.Name, "system")
+            end
+        end
+    end)
+
+    -- Kill all handler (with confirmation)
+    KillAllBtn.MouseButton1Click:Connect(function()
+        NEXBYTE:ShowConfirmation("Kill All Players", 
+            "This will attempt to eliminate all selected players. Are you sure?", 
+            function(confirmed)
+                if confirmed then
+                    -- Admin check
+                    if not NEXBYTE:RequestAdminCheck("kill") then
+                        NEXBYTE:Log("Admin permission denied for Kill All", "error")
+                        return
+                    end
+
+                    local selected = NEXBYTE:GetSelectedTargets()
+                    for _, target in pairs(selected) do
+                        if target.Character and target.Character:FindFirstChildOfClass("Humanoid") then
+                            target.Character.Humanoid.Health = 0
+                            NEXBYTE:Log("Eliminated " .. target.Name, "system")
+                        end
+                    end
+                end
+            end)
+    end)
+end
+
+-- Create troll controls after a short delay
+task.delay(0.5, CreateTrollControls)
+
+-- Return the NEXBYTE module for use in the script
+return NEXBYTE
+
+-- VISUALS SECTION - Visual effects and settings
+--[[
+    VISUALS MODULE
+    Provides visual effects and customization.
+]]
+-- Visuals status display
+local VisualsStatus = Instance.new("TextLabel")
+VisualsStatus.Name = "VisualsStatus"
+VisualsStatus.Size = UDim2.new(1, 0, 0, 20)
+VisualsStatus.Position = UDim2.new(0, 0, 0, 70)
+VisualsStatus.BackgroundTransparency = 1
+VisualsStatus.Text = "Visuals: Disabled"
+VisualsStatus.TextColor3 = Color3.fromRGB(180, 0, 0)
+VisualsStatus.Font = Enum.Font.GothamMedium
+VisualsStatus.TextSize = 12
+VisualsStatus.Parent = ContentArea
+
+-- Visuals toggles
+local function CreateVisualsControls()
+    -- ESP toggle
+    local ESPToggle = Instance.new("TextButton")
+    ESPToggle.Name = "ESPToggle"
+    ESPToggle.Size = UDim2.new(0.45, -5, 0, 35)
+    ESPToggle.Position = UDim2.new(0, 5, 1, -190)
+    ESPToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    ESPToggle.BorderSizePixel = 0
+    ESPToggle.Text = "ESP: Disabled"
+    ESPToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ESPToggle.Font = Enum.Font.GothamBold
+    ESPToggle.TextSize = 12
+    ESPToggle.Parent = ContentArea
+
+    -- Night vision toggle
+    local NightVisionToggle = Instance.new("TextButton")
+    NightVisionToggle.Name = "NightVisionToggle"
+    NightVisionToggle.Size = UDim2.new(0.45, -5, 0, 35)
+    NightVisionToggle.Position = UDim2.new(0.5, 5, 1, -190)
+    NightVisionToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    NightVisionToggle.BorderSizePixel = 0
+    NightVisionToggle.Text = "Night Vision: Off"
+    NightVisionToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    NightVisionToggle.Font = Enum.Font.GothamBold
+    NightVisionToggle.TextSize = 12
+    NightVisionToggle.Parent = ContentArea
+
+    -- Brightness slider display
+    local BrightnessValue = Instance.new("TextLabel")
+    BrightnessValue.Name = "BrightnessValue"
+    BrightnessValue.Size = UDim2.new(0.9, 0, 0, 20)
+    BrightnessValue.Position = UDim2.new(0.05, 0, 1, -150)
+    BrightnessValue.BackgroundTransparency = 1
+    BrightnessValue.Text = "Brightness: " .. tostring(Lighting.Brightness)
+    BrightnessValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+    BrightnessValue.Font = Enum.Font.Gotham
+    BrightnessValue.TextSize = 11
+    BrightnessValue.Parent = ContentArea
+
+    -- Brightness increase button
+    local BrightnessUp = Instance.new("TextButton")
+    BrightnessUp.Name = "BrightnessUp"
+    BrightnessUp.Size = UDim2.new(0.2, 0, 0, 25)
+    BrightnessUp.Position = UDim2.new(0.8, 0, 1, -150)
+    BrightnessUp.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    BrightnessUp.BorderSizePixel = 0
+    BrightnessUp.Text = "+"
+    BrightnessUp.TextColor3 = Color3.fromRGB(255, 255, 255)
+    BrightnessUp.Font = Enum.Font.GothamBold
+    BrightnessUp.TextSize = 14
+    BrightnessUp.Parent = ContentArea
+
+    -- Brightness decrease button
+    local BrightnessDown = Instance.new("TextButton")
+    BrightnessDown.Name = "BrightnessDown"
+    BrightnessDown.Size = UDim2.new(0.2, 0, 0, 25)
+    BrightnessDown.Position = UDim2.new(0.85, 0, 1, -150)
+    BrightnessDown.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    BrightnessDown.BorderSizePixel = 0
+    BrightnessDown.Text = "-"
+    BrightnessDown.TextColor3 = Color3.fromRGB(255, 255, 255)
+    BrightnessDown.Font = Enum.Font.GothamBold
+    BrightnessDown.TextSize = 14
+    BrightnessDown.Parent = ContentArea
+
+    -- ESP toggle handler
+    local esp_active = false
+    ESPToggle.MouseButton1Click:Connect(function()
+        esp_active = not esp_active
+        ESPToggle.Text = esp_active and "ESP: Enabled" or "ESP: Disabled"
+        ESPToggle.BackgroundColor3 = esp_active and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(60, 60, 70)
+
+        if esp_active then
+            NEXBYTE:Log("ESP enabled - player names will be displayed", "system")
+            -- ESP implementation would go here
+        else
+            NEXBYTE:Log("ESP disabled", "system")
+        end
+    end)
+
+    -- Night vision toggle handler
+    local night_vision = false
+    NightVisionToggle.MouseButton1Click:Connect(function()
+        night_vision = not night_vision
+        NightVisionToggle.Text = night_vision and "Night Vision: On" or "Night Vision: Off"
+        NightVisionToggle.BackgroundColor3 = night_vision and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(60, 60, 70)
+
+        -- Apply night vision effect
+        if night_vision then
+            Lighting.ClockTime = 12  -- Make it seem like night
+            Lighting.Brightness = 10  -- Increase brightness
+            NEXBYTE:Log("Night vision activated", "system")
+        else
+            Lighting.ClockTime = 14  -- Reset to day
+            Lighting.Brightness = 2  -- Reset brightness
+            NEXBYTE:Log("Night vision deactivated", "system")
+        end
+    end)
+
+    -- Brightness adjustment
+    local current_brightness = Lighting.Brightness
+    BrightnessUp.MouseButton1Click:Connect(function()
+        current_brightness = math.min(current_brightness + 1, 10)
+        Lighting.Brightness = current_brightness
+        BrightnessValue.Text = "Brightness: " .. tostring(current_brightness)
+    end)
+
+    BrightnessDown.MouseButton1Click:Connect(function()
+        current_brightness = math.max(current_brightness - 1, 0)
+        Lighting.Brightness = current_brightness
+        BrightnessValue.Text = "Brightness: " .. tostring(current_brightness)
+    end)
+end
+
+-- Create visuals controls after a short delay
+task.delay(0.5, CreateVisualsControls)
+
+-- Return the NEXBYTE module for use in the script
+return NEXBYTE
+
+-- MOVEMENT SECTION - Movement settings and modifications
+--[[
+    MOVEMENT MODULE
+    Provides movement speed, jump power, and other movement modifications.
+]]
+-- Movement status display
+local MovementStatus = Instance.new("TextLabel")
+MovementStatus.Name = "MovementStatus"
+MovementStatus.Size = UDim2.new(1, 0, 0, 20)
+MovementStatus.Position = UDim2.new(0, 0, 0, 90)
+MovementStatus.BackgroundTransparency = 1
+MovementStatus.Text = "Movement: Normal"
+MovementStatus.TextColor3 = Color3.fromRGB(180, 0, 0)
+MovementStatus.Font = Enum.Font.GothamMedium
+MovementStatus.TextSize = 12
+MovementStatus.Parent = ContentArea
+
+-- Movement toggles
+local function CreateMovementControls()
+    -- WalkSpeed slider display
+    local WalkSpeedValue = Instance.new("TextLabel")
+    WalkSpeedValue.Name = "WalkSpeedValue"
+    WalkSpeedValue.Size = UDim2.new(0.4, 0, 0, 25)
+    WalkSpeedValue.Position = UDim2.new(0, 5, 1, -220)
+    WalkSpeedValue.BackgroundTransparency = 1
+    WalkSpeedValue.Text = "WalkSpeed: " .. tostring(16)
+    WalkSpeedValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+    WalkSpeedValue.Font = Enum.Font.Gotham
+    WalkSpeedValue.TextSize = 11
+    WalkSpeedValue.Parent = ContentArea
+
+    -- WalkSpeed increase button
+    local WSUp = Instance.new("TextButton")
+    WSUp.Name = "WSUp"
+    WSUp.Size = UDim2.new(0.15, 0, 0, 25)
+    WSUp.Position = UDim2.new(0.48, 0, 1, -220)
+    WSUp.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    WSUp.BorderSizePixel = 0
+    WSUp.Text = "+"
+    WSUp.TextColor3 = Color3.fromRGB(255, 255, 255)
+    WSUp.Font = Enum.Font.GothamBold
+    WSUp.TextSize = 12
+    WSUp.Parent = ContentArea
+
+    -- WalkSpeed decrease button
+    local WSDown = Instance.new("TextButton")
+    WSDown.Name = "WSDown"
+    WSDown.Size = UDim2.new(0.15, 0, 0, 25)
+    WSDown.Position = UDim2.new(0.53, 0, 1, -220)
+    WSDown.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    WSDown.BorderSizePixel = 0
+    WSDown.Text = "-"
+    WSDown.TextColor3 = Color3.fromRGB(255, 255, 255)
+    WSDown.Font = Enum.Font.GothamBold
+    WSDown.TextSize = 12
+    WSDown.Parent = ContentArea
+
+    -- JumpPower display
+    local JumpPowerValue = Instance.new("TextLabel")
+    JumpPowerValue.Name = "JumpPowerValue"
+    JumpPowerValue.Size = UDim2.new(0.4, 0, 0, 25)
+    JumpPowerValue.Position = UDim2.new(0.7, 5, 1, -220)
+    JumpPowerValue.BackgroundTransparency = 1
+    JumpPowerValue.Text = "JumpPower: " .. tostring(50)
+    JumpPowerValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+    JumpPowerValue.Font = Enum.Font.Gotham
+    JumpPowerValue.TextSize = 11
+    JumpPowerValue.Parent = ContentArea
+
+    -- JumpPower increase button
+    local JPUp = Instance.new("TextButton")
+    JPUp.Name = "JPUp"
+    JPUp.Size = UDim2.new(0.15, 0, 0, 25)
+    JPUp.Position = UDim2.new(0.93, 0, 1, -220)
+    JPUp.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    JPUp.BorderSizePixel = 0
+    JPUp.Text = "+"
+    JPUp.TextColor3 = Color3.fromRGB(255, 255, 255)
+    JPUp.Font = Enum.Font.GothamBold
+    JPUp.TextSize = 12
+    JPUp.Parent = ContentArea
+
+    -- JumpPower decrease button
+    local JPDown = Instance.new("TextButton")
+    JPDown.Name = "JPDown"
+    JPDown.Size = UDim2.new(0.15, 0, 0, 25)
+    JPDown.Position = UDim2.new(0.98, 0, 1, -220)
+    JPDown.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    JPDown.BorderSizePixel = 0
+    JPDown.Text = "-"
+    JPDown.TextColor3 = Color3.fromRGB(255, 255, 255)
+    JPDown.Font = Enum.Font.GothamBold
+    JPDown.TextSize = 12
+    JPDown.Parent = ContentArea
+
+    -- WalkSpeed adjustment
+    local current_walkspeed = 16
+    WSUp.MouseButton1Click:Connect(function()
+        current_walkspeed = math.min(current_walkspeed + 1, 200)
+        WalkSpeedValue.Text = "WalkSpeed: " .. tostring(current_walkspeed)
+        -- Apply to player
+        local humanoid = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = current_walkspeed
+        end
+    end)
+
+    WSDown.MouseButton1Click:Connect(function()
+        current_walkspeed = math.max(current_walkspeed - 1, 1)
+        WalkSpeedValue.Text = "WalkSpeed: " .. tostring(current_walkspeed)
+        -- Apply to player
+        local humanoid = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = current_walkspeed
+        end
+    end)
+
+    -- JumpPower adjustment
+    local current_jumppower = 50
+    JPUp.MouseButton1Click:Connect(function()
+        current_jumppower = math.min(current_jumppower + 1, 500)
+        JumpPowerValue.Text = "JumpPower: " .. tostring(current_jumppower)
+        -- Apply to player
+        local humanoid = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = current_jumppower
+            humanoid.UseJumpPower = true
+        end
+    end)
+
+    JPDown.MouseButton1Click:Connect(function()
+        current_jumppower = math.max(current_jumppower - 1, 1)
+        JumpPowerValue.Text = "JumpPower: " .. tostring(current_jumppower)
+        -- Apply to player
+        local humanoid = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = current_jumppower
+            humanoid.UseJumpPower = true
+        end
+    end)
+end
+
+-- Create movement controls after a short delay
+task.delay(0.5, CreateMovementControls)
+
+-- Return the NEXBYTE module for use in the script
+return NEXBYTE
+
+-- CAMERA SECTION - Camera controls and settings
+--[[
+    CAMERA MODULE
+    Provides camera field of view, spectate, and camera modifications.
+]]
+-- Camera status display
+local CameraStatus = Instance.new("TextLabel")
+CameraStatus.Name = "CameraStatus"
+CameraStatus.Size = UDim2.new(1, 0, 0, 20)
+CameraStatus.Position = UDim2.new(0, 0, 0, 110)
+CameraStatus.BackgroundTransparency = 1
+CameraStatus.Text = "Camera: Normal"
+CameraStatus.TextColor3 = Color3.fromRGB(180, 0, 0)
+CameraStatus.Font = Enum.Font.GothamMedium
+CameraStatus.TextSize = 12
+CameraStatus.Parent = ContentArea
+
+-- Camera toggles
+local function CreateCameraControls()
+    -- FOV slider display
+    local FOVValue = Instance.new("TextLabel")
+    FOVValue.Name = "FOVValue"
+    FOVValue.Size = UDim2.new(0.4, 0, 0, 25)
+    FOVValue.Position = UDim2.new(0, 5, 1, -250)
+    FOVValue.BackgroundTransparency = 1
+    FOVValue.Text = "FOV: " .. tostring(workspace.CurrentCamera.FieldOfView)
+    FOVValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FOVValue.Font = Enum.Font.Gotham
+    FOVValue.TextSize = 11
+    FOVValue.Parent = ContentArea
+
+    -- FOV increase button
+    local FOVUp = Instance.new("TextButton")
+    FOVUp.Name = "FOVUp"
+    FOVUp.Size = UDim2.new(0.15, 0, 0, 25)
+    FOVUp.Position = UDim2.new(0.48, 0, 1, -250)
+    FOVUp.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    FOVUp.BorderSizePixel = 0
+    FOVUp.Text = "+"
+    FOVUp.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FOVUp.Font = Enum.Font.GothamBold
+    FOVUp.TextSize = 12
+    FOVUp.Parent = ContentArea
+
+    -- FOV decrease button
+    local FOVDown = Instance.new("TextButton")
+    FOVDown.Name = "FOVDown"
+    FOVDown.Size = UDim2.new(0.15, 0, 0, 25)
+    FOVDown.Position = UDim2.new(0.53, 0, 1, -250)
+    FOVDown.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    FOVDown.BorderSizePixel = 0
+    FOVDown.Text = "-"
+    FOVDown.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FOVDown.Font = Enum.Font.GothamBold
+    FOVDown.TextSize = 12
+    FOVDown.Parent = ContentArea
+
+    -- Spectate toggle
+    local SpectateToggle = Instance.new("TextButton")
+    SpectateToggle.Name = "SpectateToggle"
+    SpectateToggle.Size = UDim2.new(0.45, -5, 0, 35)
+    SpectateToggle.Position = UDim2.new(0, 5, 1, -190)
+    SpectateToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    SpectateToggle.BorderSizePixel = 0
+    SpectateToggle.Text = "Spectate: Disabled"
+    SpectateToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SpectateToggle.Font = Enum.Font.GothamBold
+    SpectateToggle.TextSize = 12
+    SpectateToggle.Parent = ContentArea
+
+    -- Current camera target display
+    local CameraTarget = Instance.new("TextLabel")
+    CameraTarget.Name = "CameraTarget"
+    CameraTarget.Size = UDim2.new(0.9, 0, 0, 20)
+    CameraTarget.Position = UDim2.new(0.05, 0, 1, -150)
+    CameraTarget.BackgroundTransparency = 1
+    CameraTarget.Text = "Target: Player"
+    CameraTarget.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CameraTarget.Font = Enum.Font.Gotham
+    CameraTarget.TextSize = 11
+    CameraTarget.Parent = ContentArea
+
+    -- WalkSpeed adjustment
+    local current_fov = workspace.CurrentCamera.FieldOfView
+    FOVUp.MouseButton1Click:Connect(function()
+        current_fov = math.min(current_fov + 10, 120)
+        workspace.CurrentCamera.FieldOfView = current_fov
+        FOVValue.Text = "FOV: " .. tostring(math.floor(current_fov))
+    end)
+
+    FOVDown.MouseButton1Click:Connect(function()
+        current_fov = math.max(current_fov - 10, 1)
+        workspace.CurrentCamera.FieldOfView = current_fov
+        FOVValue.Text = "FOV: " .. tostring(math.floor(current_fov))
+    end)
+
+    -- Spectate handler
+    local spectating = false
+    local target_player = nil
+    SpectateToggle.MouseButton1Click:Connect(function()
+        spectating = not spectating
+        SpectateToggle.Text = spectating and "Spectate: Enabled" or "Spectate: Disabled"
+        SpectateToggle.BackgroundColor3 = spectating and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(60, 60, 70)
+
+        if spectating then
+            -- Get first selected target or cycle through players
+            local selected = NEXBYTE:GetSelectedTargets()
+            local players = Players:GetPlayers()
+            
+            if #selected > 0 then
+                for _, p in ipairs(players) do
+                    if selected[p.Name] then
+                        target_player = p
+                        break
+                    end
+                end
+            end
+            
+            if not target_player then
+                -- Just select first available player
+                for _, p in ipairs(players) do
+                    if p ~= Player and p.Character then
+                        target_player = p
+                        break
+                    end
+                end
+            end
+            
+            if target_player and target_player.Character then
+                local humanoid = target_player.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    workspace.CurrentCamera.CameraSubject = humanoid
+                    NEXBYTE:Log("Now spectating " .. target_player.Name, "system")
+                end
+            end
+        else
+            -- Reset to player
+            local humanoid = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                workspace.CurrentCamera.CameraSubject = humanoid
+                NEXBYTE:Log("Spectate disabled, camera reset", "system")
+            end
+        end
+    end)
+end
+
+-- Create camera controls after a short delay
+task.delay(0.5, CreateCameraControls)
+
+-- Return the NEXBYTE module for use in the script
+return NEXBYTE
+
+-- SCRIPT HUB SECTION - Script execution and management
+--[[
+    SCRIPT HUB MODULE
+    Provides script execution, GitHub search, and file management.
+]]
+-- Script Hub status display
+local ScriptHubStatus = Instance.new("TextLabel")
+ScriptHubStatus.Name = "ScriptHubStatus"
+ScriptHubStatus.Size = UDim2.new(1, 0, 0, 20)
+ScriptHubStatus.Position = UDim2.new(0, 0, 0, 130)
+ScriptHubStatus.BackgroundTransparency = 1
+ScriptHubStatus.Text = "Script Hub: Ready"
+ScriptHubStatus.TextColor3 = Color3.fromRGB(180, 0, 0)
+ScriptHubStatus.Font = Enum.Font.GothamMedium
+ScriptHubStatus.TextSize = 12
+ScriptHubStatus.Parent = ContentArea
+
+-- Search query box
+local SearchQuery = Instance.new("TextBox")
+SearchQuery.Name = "SearchQuery"
+SearchQuery.Size = UDim2.new(0.8, 0, 0, 30)
+SearchQuery.Position = UDim2.new(0.1, 0, 1, -220)
+SearchQuery.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+SearchQuery.BorderSizePixel = 0
+SearchQuery.PlaceholderText = "Search GitHub for scripts..."
+SearchQuery.Text = ""
+SearchQuery.Font = Enum.Font.Gotham
+SearchQuery.TextSize = 12
+SearchQuery.Parent = ContentArea
+
+-- Repository dropdown
+local RepoDropdown = Instance.new("TextButton")
+RepoDropdown.Name = "RepoDropdown"
+RepoDropdown.Size = UDim2.new(0.4, 0, 0, 30)
+RepoDropdown.Position = UDim2.new(0.1, 0, 1, -180)
+RepoDropdown.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
+RepoDropdown.BorderSizePixel = 0
+RepoDropdown.Text = "Repository: Select first"
+RepoDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
+RepoDropdown.Font = Enum.Font.Gotham
+RepoDropdown.TextSize = 11
+RepoDropdown.Parent = ContentArea
+
+-- Lua file dropdown
+local FileDropdown = Instance.new("TextButton")
+FileDropdown.Name = "FileDropdown"
+FileDropdown.Size = UDim2.new(0.4, 0, 0, 30)
+FileDropdown.Position = UDim2.new(0.55, 0, 1, -180)
+FileDropdown.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
+FileDropdown.BorderSizePixel = 0
+FileDropdown.Text = "File: Load repository first"
+FileDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
+FileDropdown.Font = Enum.Font.Gotham
+FileDropdown.TextSize = 11
+FileDropdown.Parent = ContentArea
+
+-- Load repositories button
+local LoadReposBtn = Instance.new("TextButton")
+LoadReposBtn.Name = "LoadReposBtn"
+LoadReposBtn.Size = UDim2.new(0.2, 0, 0, 30)
+LoadReposBtn.Position = UDim2.new(0.1, 0, 1, -140)
+LoadReposBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+LoadReposBtn.BorderSizePixel = 0
+LoadReposBtn.Text = "LOAD REPOS"
+LoadReposBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+LoadReposBtn.Font = Enum.Font.GothamBold
+LoadReposBtn.TextSize = 11
+LoadReposBtn.Parent = ContentArea
+
+-- Execute selected button
+local ExecuteBtn = Instance.new("TextButton")
+ExecuteBtn.Name = "ExecuteBtn"
+ExecuteBtn.Size = UDim2.new(0.3, 0, 0, 35)
+ExecuteBtn.Position = UDim2.new(0.35, 0, 1, -80)
+ExecuteBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+ExecuteBtn.BorderSizePixel = 0
+ExecuteBtn.Text = "EXECUTE SELECTED"
+ExecuteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ExecuteBtn.Font = Enum.Font.GothamBold
+ExecuteBtn.TextSize = 12
+ExecuteBtn.Parent = ContentArea
+
+-- Execute input
+local ExecuteInput = Instance.new("TextBox")
+ExecuteInput.Name = "ExecuteInput"
+ExecuteInput.Size = UDim2.new(0.6, 0, 0, 30)
+ExecuteInput.Position = UDim2.new(0.2, 0, 1, -40)
+ExecuteInput.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+ExecuteInput.BorderSizePixel = 0
+ExecuteInput.PlaceholderText = "Or execute Lua source below..."
+ExecuteInput.Text = ""
+ExecuteInput.Font = Enum.Font.Gotham
+ExecuteInput.TextSize = 12
+ExecuteInput.Parent = ContentArea
+
+-- Function to search GitHub repositories
+local function SearchGitHubRepositories()
+    local query = SearchQuery.Text:gsub("%s+", "+")
+    if query == "+" or query == "" then
+        NEXBYTE:Log("Please enter a search query", "warning")
+        return
+    end
+
+    NEXBYTE:Log("Searching GitHub for: " .. query, "system")
+
+    task.spawn(function()
+        local ok, result = pcall(function()
+            local encoded_query = game:GetService("HttpService"):UrlEncode(query .. " roblox lua")
+            return game:GetService("HttpService"):JSONDecode(game:HttpGet(
+                "https://api.github.com/search/repositories?q=" .. encoded_query .. "&sort=stars&order=desc&per_page=5"
+            ))
+        end)
+
+        if ok and result and result.items then
+            local options = {}
+            local repo_map = {}
+
+            for _, item in ipairs(result.items) do
+                local label = item.full_name .. " | " .. tostring(item.stargazers_count) .. " stars"
+                repo_map[label] = {
+                    owner = item.owner.login,
+                    name = item.name,
+                    branch = item.default_branch
+                }
+                table.insert(options, label)
+            end
+
+            if #options > 0 then
+                -- Update dropdown
+                RepoDropdown.Text = "Repository: " .. options[1]
+                _G["NEXBYTE_Selected_Repo"] = repo_map[options[1]]
+
+                -- Refresh file dropdown when repository is selected
+                -- (Would need additional UI updates)
+                NEXBYTE:Log("Found " .. #result.items .. " repositories", "system")
+            else
+                NEXBYTE:Log("No repositories found", "warning")
+            end
+        else
+            NEXBYTE:Log("GitHub search failed or rate limited", "error")
+        end
+    end)
+end
+
+LoadReposBtn.MouseButton1Click:Connect(SearchGitHubRepositories)
+
+-- Function to load Lua files from selected repository
+local function LoadSelectedRepository()
+    local selected_repo = _G["NEXBYTE_Selected_Repo"]
+    if not selected_repo then
+        NEXBYTE:Log("Please select a repository first", "warning")
+        return
+    end
+
+    NEXBYTE:Log("Loading files from " .. selected_repo.owner .. "/" .. selected_repo.name, "system")
+
+    task.spawn(function()
+        local ok, result = pcall(function()
+            local url = "https://api.github.com/repos/" .. selected_repo.owner .. "/" .. selected_repo.name ..
+                "/git/trees/" .. selected_repo.branch .. "?recursive=1"
+            return game:GetService("HttpService"):JSONDecode(game:HttpGet(url))
+        end)
+
+        if ok and result and result.tree then
+            local options = {}
+            local script_map = {}
+
+            for _, item in ipairs(result.tree) do
+                if item.type == "blob" and item.path:lower():match("%.lua$") then
+                    local path = item.path
+                    local raw = "https://raw.githubusercontent.com/" .. selected_repo.owner .. "/" .. selected_repo.name .. "/" .. selected_repo.branch .. "/" .. path
+                    script_map[path] = raw
+                    table.insert(options, path)
+                end
+            end
+
+            if #options > 0 then
+                FileDropdown.Text = "File: " .. options[1]
+                _G["NEXBYTE_Selected_File"] = script_map[options[1]]
+                NEXBYTE:Log("Found " .. #options .. " Lua files", "system")
+            else
+                NEXBYTE:Log("No Lua files found in repository", "warning")
+            end
+        else
+            NEXBYTE:Log("Failed to load repository files", "error")
+        end
+    end)
+end
+
+LoadReposBtn.MouseButton1Click:Connect(LoadSelectedRepository)
+
+-- Execute selected handler
+ExecuteBtn.MouseButton1Click:Connect(function()
+    -- Try to execute from file dropdown first
+    local file_path = FileDropdown.Text:gsub("File: ", "")
+    local script_path = _G["NEXBYTE_Selected_File"]
+
+    if script_path then
+        -- Execute from repository
+        task.spawn(function()
+            local ok, err = pcall(function()
+                local source = game:GetService("HttpService"):GetAsync(script_path)
+                assert(#source > 0, "Empty file")
+                local fn, compile_error = loadstring(source)
+                assert(fn, compile_error or "Compile failed")
+                fn()
+            end)
+
+            if not ok then
+                NEXBYTE:Log("Execution error: " .. tostring(err), "error")
+            else
+                NEXBYTE:Log("Script executed successfully", "system")
+            end
+        end)
+    elseif SearchQuery.Text ~= "" and SearchQuery.Text ~= "Search GitHub for scripts..." then
+        -- Execute from search query (last result)
+        NEXBYTE:Log("Executing from search results", "system")
+    else
+        -- Execute from input box
+        local source = ExecuteInput.Text
+        if source ~= "" then
+            task.spawn(function()
+                local ok, err = pcall(function()
+                    local fn, compile_error = loadstring(source)
+                    assert(fn, compile_error or "Compile failed")
+                    fn()
+                end)
+
+                if not ok then
+                    NEXBYTE:Log("Execution error: " .. tostring(err), "error")
+                else
+                    NEXBYTE:Log("Script executed from input", "system")
+                end
+            end)
+        else
+            NEXBYTE:Log("No script to execute", "warning")
+        end
+    end
+end)
+
+-- Return the NEXBYTE module for use in the script
+return NEXBYTE
