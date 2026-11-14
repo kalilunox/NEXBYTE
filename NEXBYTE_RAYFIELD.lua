@@ -2324,7 +2324,7 @@ NXFeExploits:CreateToggle({name="TRACERS (Lines)", value=false, callback=functio
         end
     end
     NXNotify("TRACERS", v and "ON" or "OFF")
-end)
+end})
 
 -- Box ESP
 local boxEspConn
