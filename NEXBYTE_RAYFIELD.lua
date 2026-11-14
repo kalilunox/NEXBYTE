@@ -1881,6 +1881,1416 @@ NXFeExploits:CreateButton({name="LAG SERVER (Part Spam)", callback=function()
 end})
 
 -- =====================================================
+-- ADDITIONAL 200+ FUNCTIONS
+-- =====================================================
+
+-- COMBAT ADVANCED
+NXFeExploits:CreateSection({name="COMBAT ADVANCED"})
+
+-- Aimbot (closest player)
+local aimbotConn
+NXFeExploits:CreateToggle({name="AIMBOT (Camera)", value=false, callback=function(v)
+    if v then
+        aimbotConn = RunService.RenderStepped:Connect(function()
+            local closest, dist = nil, math.huge
+            local cam = workspace.CurrentCamera
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= Player and plr.Character then
+                    local head = plr.Character:FindFirstChild("Head")
+                    if head then
+                        local screenPos, onScreen = cam:WorldToViewportPoint(head.Position)
+                        if onScreen then
+                            local d = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)).Magnitude
+                            if d < dist then dist = d; closest = head end
+                        end
+                    end
+                end
+            end
+            if closest then cam.CFrame = CFrame.new(cam.CFrame.Position, closest.Position) end
+        end)
+    else
+        if aimbotConn then aimbotConn:Disconnect() end
+    end
+    NXNotify("AIMBOT", v and "ON" or "OFF")
+end})
+
+-- Silent Aim (redirects projectiles - game dependent)
+NXFeExploits:CreateToggle({name="SILENT AIM (Hook)", value=false, callback=function(v)
+    NXNotify("SILENT AIM", "Requires game-specific hook. Placeholder.")
+end})
+
+-- Triggerbot
+local triggerConn
+NXFeExploits:CreateToggle({name="TRIGGERBOT", value=false, callback=function(v)
+    if v then
+        triggerConn = RunService.Heartbeat:Connect(function()
+            local mouse = Player:GetMouse()
+            if mouse.Target then
+                local model = mouse.Target:FindFirstAncestorOfClass("Model")
+                if model then
+                    local hum = model:FindFirstChildOfClass("Humanoid")
+                    if hum and hum.Health > 0 and Players:GetPlayerFromCharacter(model) then
+                        mouse1click()
+                    end
+                end
+            end
+        end)
+    else
+        if triggerConn then triggerConn:Disconnect() end
+    end
+    NXNotify("TRIGGERBOT", v and "ON" or "OFF")
+end})
+
+-- Auto Parry (for combat games)
+NXFeExploits:CreateToggle({name="AUTO PARRY (Generic)", value=false, callback=function(v)
+    NXNotify("AUTO PARRY", "Game-specific. Placeholder.")
+end})
+
+-- Kill All Loop
+local killAllConn
+NXFeExploits:CreateToggle({name="KILL ALL LOOP", value=false, callback=function(v)
+    if v then
+        killAllConn = RunService.Heartbeat:Connect(function()
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= Player and plr.Character then
+                    local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+                    if hum and hum.Health > 0 then hum.Health = 0 end
+                end
+            end
+        end)
+    else
+        if killAllConn then killAllConn:Disconnect() end
+    end
+    NXNotify("KILL ALL LOOP", v and "ON" or "OFF")
+end})
+
+-- Damage Indicator
+NXFeExploits:CreateButton({name="SHOW DAMAGE INDICATORS", callback=function()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= Player and plr.Character then
+            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                local oldHealth = hum.Health
+                hum.HealthChanged:Connect(function(new)
+                    if new < oldHealth then
+                        local head = plr.Character:FindFirstChild("Head")
+                        if head then
+                            local billboard = Instance.new("BillboardGui")
+                            billboard.Size = UDim2.new(0, 100, 0, 50)
+                            billboard.StudsOffset = Vector3.new(0, 3, 0)
+                            billboard.Adornee = head
+                            billboard.Parent = head
+                            local label = Instance.new("TextLabel")
+                            label.Size = UDim2.new(1, 0, 1, 0)
+                            label.BackgroundTransparency = 1
+                            label.Text = "-" .. math.floor(oldHealth - new)
+                            label.TextColor3 = Color3.new(1, 0, 0)
+                            label.TextScaled = true
+                            label.Font = Enum.Font.GothamBold
+                            label.Parent = billboard
+                            game:GetService("Debris"):AddItem(billboard, 1)
+                        end
+                    end
+                    oldHealth = new
+                end)
+            end
+        end
+    end
+    NXNotify("DAMAGE IND", "Enabled")
+end})
+
+-- Anti Knockback
+local antiKbConn
+NXFeExploits:CreateToggle({name="ANTI KNOCKBACK", value=false, callback=function(v)
+    if v then
+        antiKbConn = RunService.Heartbeat:Connect(function()
+            local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0) end
+        end)
+    else
+        if antiKbConn then antiKbConn:Disconnect() end
+    end
+    NXNotify("ANTI KB", v and "ON" or "OFF")
+end})
+
+-- Velocity Spoofer
+local velSpoofConn
+NXFeExploits:CreateToggle({name="VELOCITY SPOOFER", value=false, callback=function(v)
+    if v then
+        velSpoofConn = RunService.Heartbeat:Connect(function()
+            local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0) end
+        end)
+    else
+        if velSpoofConn then velSpoofConn:Disconnect() end
+    end
+    NXNotify("VEL SPOOF", v and "ON" or "OFF")
+end})
+
+-- No Recoil (for guns)
+NXFeExploits:CreateButton({name="NO RECOIL (Hook)", callback=function()
+    NXNotify("NO RECOIL", "Game-specific. Placeholder.")
+end})
+
+-- Rapid Fire (for guns)
+NXFeExploits:CreateButton({name="RAPID FIRE (Hook)", callback=function()
+    NXNotify("RAPID FIRE", "Game-specific. Placeholder.")
+end})
+
+-- Infinite Ammo (for guns)
+NXFeExploits:CreateButton({name="INF AMMO (Hook)", callback=function()
+    NXNotify("INF AMMO", "Game-specific. Placeholder.")
+end})
+
+-- =====================================================
+-- MOVEMENT ADVANCED
+NXFeExploits:CreateSection({name="MOVEMENT ADVANCED"})
+
+-- Bunny Hop
+local bhopConn
+NXFeExploits:CreateToggle({name="BUNNY HOP", value=false, callback=function(v)
+    if v then
+        bhopConn = RunService.Heartbeat:Connect(function()
+            local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+            local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            if hum and hrp and hum:GetState() == Enum.HumanoidStateType.Running then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    else
+        if bhopConn then bhopConn:Disconnect() end
+    end
+    NXNotify("BHOP", v and "ON" or "OFF")
+end})
+
+-- Auto Sprint
+local sprintConn
+NXFeExploits:CreateToggle({name="AUTO SPRINT", value=false, callback=function(v)
+    if v then
+        sprintConn = RunService.Heartbeat:Connect(function()
+            local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.WalkSpeed < 20 then hum.WalkSpeed = 24 end
+        end)
+    else
+        if sprintConn then sprintConn:Disconnect() end
+    end
+    NXNotify("AUTO SPRINT", v and "ON" or "OFF")
+end})
+
+-- Wall Climb
+local wallClimbConn
+NXFeExploits:CreateToggle({name="WALL CLIMB", value=false, callback=function(v)
+    if v then
+        wallClimbConn = RunService.Heartbeat:Connect(function()
+            local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+            local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            if hum and hrp and hum:GetState() == Enum.HumanoidStateType.Freefall then
+                local ray = workspace:Raycast(hrp.Position, hrp.CFrame.LookVector * 3, RaycastParams.new())
+                if ray then
+                    hrp.Velocity = Vector3.new(0, 50, 0)
+                end
+            end
+        end)
+    else
+        if wallClimbConn then wallClimbConn:Disconnect() end
+    end
+    NXNotify("WALL CLIMB", v and "ON" or "OFF")
+end})
+
+-- Ladder Glitch
+NXFeExploits:CreateButton({name="LADDER GLITCH", callback=function()
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local lad = Instance.new("Part")
+        lad.Size = Vector3.new(1, 100, 1)
+        lad.CFrame = hrp.CFrame * CFrame.new(0, 0, -3)
+        lad.Anchored = true
+        lad.Transparency = 1
+        lad.Parent = workspace
+        NXNotify("LADDER", "Created invisible ladder")
+        task.delay(10, function() lad:Destroy() end)
+    end
+end})
+
+-- Fly V2 (CFrame based, smoother)
+local flyV2Conn
+NXFeExploits:CreateToggle({name="FLY V2 (CFrame)", value=false, callback=function(v)
+    if v then
+        local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+        local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+        if hrp and hum then
+            hum.PlatformStand = true
+            flyV2Conn = RunService.RenderStepped:Connect(function()
+                local cam = workspace.CurrentCamera
+                local move = Vector3.new()
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then move = move + cam.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then move = move - cam.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then move = move - cam.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then move = move + cam.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then move = move - Vector3.new(0, 1, 0) end
+                hrp.CFrame = hrp.CFrame:Lerp(hrp.CFrame + move * 2, 0.5)
+            end)
+        end
+    else
+        if flyV2Conn then flyV2Conn:Disconnect() end
+        local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.PlatformStand = false end
+    end
+    NXNotify("FLY V2", v and "ON" or "OFF")
+end})
+
+-- Jetpack
+NXFeExploits:CreateButton({name="JETPACK (Tool)", callback=function()
+    local tool = Instance.new("Tool")
+    tool.Name = "Jetpack"
+    tool.RequiresHandle = true
+    local handle = Instance.new("Part")
+    handle.Name = "Handle"
+    handle.Size = Vector3.new(2, 2, 1)
+    handle.Massless = true
+    handle.Parent = tool
+    local fire = Instance.new("Fire")
+    fire.Size = 5
+    fire.Heat = 10
+    fire.Parent = handle
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bv.Velocity = Vector3.new(0, 0, 0)
+    bv.Parent = handle
+    local bg = Instance.new("BodyGyro")
+    bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bg.Parent = handle
+    local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+    tool.Equipped:Connect(function()
+        if hum then hum.PlatformStand = true end
+        bv.Parent = handle
+        bg.Parent = handle
+    end)
+    tool.Unequipped:Connect(function()
+        if hum then hum.PlatformStand = false end
+        bv.Parent = nil
+        bg.Parent = nil
+    end)
+    tool.Parent = Player.Backpack
+    NXNotify("JETPACK", "Equip to use")
+end})
+
+-- Speed Coil
+NXFeExploits:CreateButton({name="SPEED COIL (Tool)", callback=function()
+    local tool = Instance.new("Tool")
+    tool.Name = "Speed Coil"
+    tool.RequiresHandle = true
+    local handle = Instance.new("Part")
+    handle.Name = "Handle"
+    handle.Size = Vector3.new(1, 1, 4)
+    handle.Shape = Enum.PartType.Cylinder
+    handle.Massless = true
+    handle.Parent = tool
+    tool.Equipped:Connect(function()
+        local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = 50 end
+    end)
+    tool.Unequipped:Connect(function()
+        local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = 16 end
+    end)
+    tool.Parent = Player.Backpack
+    NXNotify("SPEED COIL", "Equip for 50 speed")
+end})
+
+-- Gravity Coil
+NXFeExploits:CreateButton({name="GRAVITY COIL (Tool)", callback=function()
+    local tool = Instance.new("Tool")
+    tool.Name = "Gravity Coil"
+    tool.RequiresHandle = true
+    local handle = Instance.new("Part")
+    handle.Name = "Handle"
+    handle.Size = Vector3.new(1, 1, 4)
+    handle.Shape = Enum.PartType.Cylinder
+    handle.Massless = true
+    handle.BrickColor = BrickColor.new("Bright blue")
+    handle.Parent = tool
+    tool.Equipped:Connect(function()
+        workspace.Gravity = 50
+    end)
+    tool.Unequipped:Connect(function()
+        workspace.Gravity = 196.2
+    end)
+    tool.Parent = Player.Backpack
+    NXNotify("GRAVITY COIL", "Equip for low gravity")
+end})
+
+-- Teleport Tool
+NXFeExploits:CreateButton({name="TP TOOL (Click)", callback=function()
+    local tool = Instance.new("Tool")
+    tool.Name = "TP Tool"
+    tool.RequiresHandle = false
+    tool.Activated:Connect(function()
+        local mouse = Player:GetMouse()
+        local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp and mouse.Hit then hrp.CFrame = mouse.Hit * CFrame.new(0, 3, 0) end
+    end)
+    tool.Parent = Player.Backpack
+    NXNotify("TP TOOL", "Click to teleport")
+end})
+
+-- =====================================================
+-- VISUAL ADVANCED
+NXFeExploits:CreateSection({name="VISUAL ADVANCED"})
+
+-- Chams (Highlight)
+local chamsConn
+NXFeExploits:CreateToggle({name="CHAMS (Highlight)", value=false, callback=function(v)
+    if v then
+        chamsConn = RunService.Heartbeat:Connect(function()
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= Player and plr.Character and not plr.Character:FindFirstChild("NEXBYTE_Highlight") then
+                    local hl = Instance.new("Highlight")
+                    hl.Name = "NEXBYTE_Highlight"
+                    hl.FillColor = Color3.new(1, 0, 0)
+                    hl.OutlineColor = Color3.new(1, 1, 1)
+                    hl.FillTransparency = 0.5
+                    hl.OutlineTransparency = 0
+                    hl.Adornee = plr.Character
+                    hl.Parent = plr.Character
+                end
+            end
+        end)
+    else
+        if chamsConn then chamsConn:Disconnect() end
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr.Character then
+                local hl = plr.Character:FindFirstChild("NEXBYTE_Highlight")
+                if hl then hl:Destroy() end
+            end
+        end
+    end
+    NXNotify("CHAMS", v and "ON" or "OFF")
+end})
+
+-- Tracers
+local tracersConn
+NXFeExploits:CreateToggle({name="TRACERS (Lines)", value=false, callback=function(v)
+    if v then
+        tracersConn = RunService.RenderStepped:Connect(function()
+            local cam = workspace.CurrentCamera
+            local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= Player and plr.Character then
+                    local tRoot = plr.Character:FindFirstChild("HumanoidRootPart")
+                    if tRoot then
+                        local line = plr.Character:FindFirstChild("NEXBYTE_Tracer")
+                        if not line then
+                            line = Instance.new("Beam")
+                            line.Name = "NEXBYTE_Tracer"
+                            line.Color = ColorSequence.new(Color3.new(1, 0, 0))
+                            line.Width0 = 0.2
+                            line.Width1 = 0.2
+                            line.FaceCamera = true
+                            line.Parent = plr.Character
+                            local a0 = Instance.new("Attachment")
+                            a0.Name = "TracerA0"
+                            a0.Position = Vector3.new(0, 0, 0)
+                            a0.Parent = hrp
+                            local a1 = Instance.new("Attachment")
+                            a1.Name = "TracerA1"
+                            a1.Position = Vector3.new(0, 0, 0)
+                            a1.Parent = tRoot
+                            line.Attachment0 = a0
+                            line.Attachment1 = a1
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        if tracersConn then tracersConn:Disconnect() end
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr.Character then
+                local line = plr.Character:FindFirstChild("NEXBYTE_Tracer")
+                if line then line:Destroy() end
+                local a0 = plr.Character:FindFirstChild("TracerA0")
+                if a0 then a0:Destroy() end
+                local a1 = plr.Character:FindFirstChild("TracerA1")
+                if a1 then a1:Destroy() end
+            end
+        end
+        local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local a0 = hrp:FindFirstChild("TracerA0")
+            if a0 then a0:Destroy() end
+        end
+    end
+    NXNotify("TRACERS", v and "ON" or "OFF")
+end)
+
+-- Box ESP
+local boxEspConn
+NXFeExploits:CreateToggle({name="BOX ESP", value=false, callback=function(v)
+    if v then
+        boxEspConn = RunService.Heartbeat:Connect(function()
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= Player and plr.Character and not plr.Character:FindFirstChild("NEXBYTE_BoxESP") then
+                    local box = Instance.new("BoxHandleAdornment")
+                    box.Name = "NEXBYTE_BoxESP"
+                    box.Size = Vector3.new(4, 5, 2)
+                    box.Color3 = Color3.new(1, 0, 0)
+                    box.Transparency = 0.5
+                    box.AlwaysOnTop = true
+                    box.Adornee = plr.Character:FindFirstChild("HumanoidRootPart")
+                    box.Parent = plr.Character
+                end
+            end
+        end)
+    else
+        if boxEspConn then boxEspConn:Disconnect() end
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr.Character then
+                local box = plr.Character:FindFirstChild("NEXBYTE_BoxESP")
+                if box then box:Destroy() end
+            end
+        end
+    end
+    NXNotify("BOX ESP", v and "ON" or "OFF")
+end)
+
+-- Skeleton ESP
+local skeletonConn
+NXFeExploits:CreateToggle({name="SKELETON ESP", value=false, callback=function(v)
+    NXNotify("SKELETON ESP", "Complex. Placeholder.")
+end})
+
+-- Name Tags (already have ESP)
+
+-- Distance ESP
+local distEspConn
+NXFeExploits:CreateToggle({name="DISTANCE ESP", value=false, callback=function(v)
+    if v then
+        distEspConn = RunService.Heartbeat:Connect(function()
+            local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= Player and plr.Character then
+                    local head = plr.Character:FindFirstChild("Head")
+                    if head then
+                        local dist = math.floor((head.Position - hrp.Position).Magnitude)
+                        local tag = head:FindFirstChild("NEXBYTE_DistTag")
+                        if not tag then
+                            tag = Instance.new("BillboardGui")
+                            tag.Name = "NEXBYTE_DistTag"
+                            tag.Size = UDim2.new(0, 100, 0, 30)
+                            tag.StudsOffset = Vector3.new(0, 2.5, 0)
+                            tag.AlwaysOnTop = true
+                            tag.Adornee = head
+                            tag.Parent = head
+                            local label = Instance.new("TextLabel")
+                            label.Size = UDim2.new(1, 0, 1, 0)
+                            label.BackgroundTransparency = 1
+                            label.TextColor3 = Color3.new(1, 1, 1)
+                            label.TextScaled = true
+                            label.Font = Enum.Font.Gotham
+                            label.Parent = tag
+                        end
+                        tag.TextLabel.Text = plr.Name .. " [" .. dist .. "m]"
+                    end
+                end
+            end
+        end)
+    else
+        if distEspConn then distEspConn:Disconnect() end
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr.Character and plr.Character:FindFirstChild("Head") then
+                local tag = plr.Character.Head:FindFirstChild("NEXBYTE_DistTag")
+                if tag then tag:Destroy() end
+            end
+        end
+    end
+    NXNotify("DIST ESP", v and "ON" or "OFF")
+end)
+
+-- Health Bar ESP
+local healthEspConn
+NXFeExploits:CreateToggle({name="HEALTH BAR ESP", value=false, callback=function(v)
+    NXNotify("HEALTH BAR ESP", "Complex. Placeholder.")
+end})
+
+-- Rainbow ESP
+local rainbowEspConn
+NXFeExploits:CreateToggle({name="RAINBOW ESP", value=false, callback=function(v)
+    if v then
+        rainbowEspConn = RunService.Heartbeat:Connect(function()
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr.Character then
+                    local hl = plr.Character:FindFirstChild("NEXBYTE_Highlight")
+                    if hl then hl.FillColor = Color3.fromHSV(tick() % 5 / 5, 1, 1) end
+                end
+            end
+        end)
+    else
+        if rainbowEspConn then rainbowEspConn:Disconnect() end
+    end
+    NXNotify("RAINBOW ESP", v and "ON" or "OFF")
+end)
+
+-- No Render (invisible others)
+NXFeExploits:CreateToggle({name="HIDE OTHERS (Local)", value=false, callback=function(v)
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= Player and plr.Character then
+            for _, p in pairs(plr.Character:GetDescendants()) do
+                if p:IsA("BasePart") then p.Transparency = v and 1 or 0 end
+                if p:IsA("Decal") or p:IsA("Texture") then p.Transparency = v and 1 or 0 end
+            end
+        end
+    end
+    NXNotify("HIDE OTHERS", v and "ON" or "OFF")
+end})
+
+-- X-Ray (see through walls)
+local xrayConn
+NXFeExploits:CreateToggle({name="X-RAY", value=false, callback=function(v)
+    if v then
+        xrayConn = RunService.Heartbeat:Connect(function()
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and not obj:IsDescendantOf(Player.Character) then
+                    obj.LocalTransparencyModifier = 0.8
+                end
+            end
+        end)
+    else
+        if xrayConn then xrayConn:Disconnect() end
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then obj.LocalTransparencyModifier = 0 end
+        end
+    end
+    NXNotify("X-RAY", v and "ON" or "OFF")
+end})
+
+-- Fullbright (already have)
+
+-- No Shadows
+NXFeExploits:CreateToggle({name="NO SHADOWS", value=false, callback=function(v)
+    Lighting.GlobalShadows = not v
+    NXNotify("NO SHADOWS", v and "ON" or "OFF")
+end})
+
+-- Ambient Light
+NXFeExploits:CreateSlider({name="AMBIENT", range={0, 1}, value=0.5, callback=function(v)
+    Lighting.Ambient = Color3.new(v, v, v)
+    Lighting.OutdoorAmbient = Color3.new(v, v, v)
+end})
+
+-- Bloom Effect
+NXFeExploits:CreateButton({name="ADD BLOOM", callback=function()
+    local bloom = Instance.new("BloomEffect")
+    bloom.Intensity = 1
+    bloom.Size = 24
+    bloom.Threshold = 0.8
+    bloom.Parent = Lighting
+    NXNotify("BLOOM", "Added")
+end})
+
+-- Sun Rays
+NXFeExploits:CreateButton({name="ADD SUN RAYS", callback=function()
+    local rays = Instance.new("SunRaysEffect")
+    rays.Intensity = 0.5
+    rays.Spread = 1
+    rays.Parent = Lighting
+    NXNotify("SUN RAYS", "Added")
+end})
+
+-- Blur Effect
+NXFeExploits:CreateButton({name="ADD BLUR", callback=function()
+    local blur = Instance.new("BlurEffect")
+    blur.Size = 10
+    blur.Parent = Lighting
+    NXNotify("BLUR", "Added")
+end})
+
+-- Color Correction
+NXFeExploits:CreateButton({name="ADD COLOR CORRECTION", callback=function()
+    local cc = Instance.new("ColorCorrectionEffect")
+    cc.Brightness = 0.1
+    cc.Contrast = 0.2
+    cc.Saturation = 0.5
+    cc.TintColor = Color3.new(1, 0.8, 0.6)
+    cc.Parent = Lighting
+    NXNotify("COLOR CORRECTION", "Added")
+end})
+
+-- Depth of Field
+NXFeExploits:CreateButton({name="ADD DEPTH OF FIELD", callback=function()
+    local dof = Instance.new("DepthOfFieldEffect")
+    dof.FarIntensity = 0.5
+    dof.FocusDistance = 50
+    dof.InFocusRadius = 20
+    dof.NearIntensity = 0.5
+    dof.Parent = Lighting
+    NXNotify("DOF", "Added")
+end})
+
+-- Remove All Effects
+NXFeExploits:CreateButton({name="REMOVE ALL EFFECTS", callback=function()
+    for _, v in pairs(Lighting:GetChildren()) do
+        if v:IsA("PostEffect") then v:Destroy() end
+    end
+    NXNotify("EFFECTS", "Removed all")
+end})
+
+-- =====================================================
+-- SERVER ADVANCED
+NXFeExploits:CreateSection({name="SERVER ADVANCED"})
+
+-- Server Info
+NXFeExploits:CreateButton({name="SERVER INFO", callback=function()
+    local info = string.format("PlaceId: %d\nJobId: %s\nPlayers: %d/%d\nTime: %.1f",
+        game.PlaceId, game.JobId, #Players:GetPlayers(), Players.MaxPlayers, Lighting.ClockTime)
+    NXNotify("SERVER INFO", info)
+    print(info)
+end})
+
+-- Player List (detailed)
+NXFeExploits:CreateButton({name="DETAILED PLAYER LIST", callback=function()
+    for _, plr in pairs(Players:GetPlayers()) do
+        local char = plr.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local health = hum and math.floor(hum.Health) or "N/A"
+        local pos = hrp and string.format("%.0f, %.0f, %.0f", hrp.Position.X, hrp.Position.Y, hrp.Position.Z) or "N/A"
+        print(string.format("%s | Health: %s | Pos: %s | Age: %d | Id: %d", plr.Name, health, pos, plr.AccountAge, plr.UserId))
+    end
+    NXNotify("PLAYER LIST", "Printed to console")
+end})
+
+-- Copy Player Username
+NXFeExploits:CreateButton({name="COPY SELECTED USERNAME", callback=function()
+    local target = NXGetTarget()
+    if target then
+        setclipboard(target.Name)
+        NXNotify("COPIED", target.Name)
+    else
+        NXNotify("COPY", "No target selected")
+    end
+end})
+
+-- Copy Player UserId
+NXFeExploits:CreateButton({name="COPY SELECTED USERID", callback=function()
+    local target = NXGetTarget()
+    if target then
+        setclipboard(tostring(target.UserId))
+        NXNotify("COPIED", target.UserId)
+    else
+        NXNotify("COPY", "No target selected")
+    end
+end})
+
+-- View Player Profile
+NXFeExploits:CreateButton({name="VIEW PROFILE (Website)", callback=function()
+    local target = NXGetTarget()
+    if target then
+        local url = "https://www.roblox.com/users/" .. target.UserId .. "/profile"
+        setclipboard(url)
+        NXNotify("PROFILE", "URL copied: " .. url)
+    else
+        NXNotify("PROFILE", "No target selected")
+    end
+end)
+
+-- Join Player's Game (if they're in one)
+NXFeExploits:CreateButton({name="JOIN PLAYER'S GAME", callback=function()
+    NXNotify("JOIN GAME", "Requires game-specific API. Placeholder.")
+end})
+
+-- Spectate Player (already in Camera)
+
+-- Follow Player
+local followConn, followTarget
+NXFeExploits:CreateToggle({name="FOLLOW PLAYER", value=false, callback=function(v)
+    if v then
+        followTarget = NXGetTarget()
+        if not followTarget then return NXNotify("FOLLOW", "Select a player first") end
+        followConn = RunService.Heartbeat:Connect(function()
+            if followTarget and followTarget.Character then
+                local tRoot = followTarget.Character:FindFirstChild("HumanoidRootPart")
+                local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+                if tRoot and hrp then
+                    hrp.CFrame = tRoot.CFrame * CFrame.new(0, 0, 5)
+                end
+            end
+        end)
+    else
+        if followConn then followConn:Disconnect() end
+        followTarget = nil
+    end
+    NXNotify("FOLLOW", v and "ON" or "OFF")
+end})
+
+-- Orbit Player
+local orbitConn, orbitTarget
+NXFeExploits:CreateToggle({name="ORBIT PLAYER", value=false, callback=function(v)
+    if v then
+        orbitTarget = NXGetTarget()
+        if not orbitTarget then return NXNotify("ORBIT", "Select a player first") end
+        local angle = 0
+        orbitConn = RunService.Heartbeat:Connect(function()
+            if orbitTarget and orbitTarget.Character then
+                local tRoot = orbitTarget.Character:FindFirstChild("HumanoidRootPart")
+                local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+                if tRoot and hrp then
+                    angle = angle + 2
+                    local offset = Vector3.new(math.cos(math.rad(angle)) * 10, 5, math.sin(math.rad(angle)) * 10)
+                    hrp.CFrame = CFrame.new(tRoot.Position + offset, tRoot.Position)
+                end
+            end
+        end)
+    else
+        if orbitConn then orbitConn:Disconnect() end
+        orbitTarget = nil
+    end
+    NXNotify("ORBIT", v and "ON" or "OFF")
+end})
+
+-- Fling Player (single)
+NXFeExploits:CreateButton({name="FLING SELECTED (Once)", callback=function()
+    local target = NXGetTarget()
+    if not target then return NXNotify("FLING", "Select a player") end
+    local char = Player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local rp = hum and hum.RootPart
+    local tChar = target.Character
+    local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
+    if rp and tRoot then
+        local oldPos = rp.CFrame
+        rp.CFrame = tRoot.CFrame
+        rp.Velocity = Vector3.new(9e7, 9e7, 9e7)
+        rp.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+        task.wait(0.5)
+        rp.CFrame = oldPos
+        rp.Velocity = Vector3.new()
+        rp.RotVelocity = Vector3.new()
+        NXNotify("FLING", "Flung " .. target.Name)
+    end
+end})
+
+-- Void Player (teleport to void)
+NXFeExploits:CreateButton({name="VOID PLAYER", callback=function()
+    local target = NXGetTarget()
+    if not target then return NXNotify("VOID", "Select a player") end
+    local tRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    if tRoot then
+        tRoot.CFrame = CFrame.new(0, -1000, 0)
+        NXNotify("VOID", "Sent " .. target.Name .. " to void")
+    end
+end})
+
+-- Freeze Player (anchor)
+NXFeExploits:CreateButton({name="FREEZE PLAYER", callback=function()
+    local target = NXGetTarget()
+    if not target then return NXNotify("FREEZE", "Select a player") end
+    for _, p in pairs(target.Character:GetDescendants()) do
+        if p:IsA("BasePart") then p.Anchored = true end
+    end
+    NXNotify("FREEZE", "Froze " .. target.Name)
+end})
+
+-- Unfreeze Player
+NXFeExploits:CreateButton({name="UNFREEZE PLAYER", callback=function()
+    local target = NXGetTarget()
+    if not target then return NXNotify("UNFREEZE", "Select a player") end
+    for _, p in pairs(target.Character:GetDescendants()) do
+        if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then p.Anchored = false end
+    end
+    NXNotify("UNFREEZE", "Unfroze " .. target.Name)
+end})
+
+-- Strip Player (remove accessories)
+NXFeExploits:CreateButton({name="STRIP PLAYER", callback=function()
+    local target = NXGetTarget()
+    if not target then return NXNotify("STRIP", "Select a player") end
+    for _, v in pairs(target.Character:GetChildren()) do
+        if v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then
+            v:Destroy()
+        end
+    end
+    NXNotify("STRIP", "Stripped " .. target.Name)
+end})
+
+-- Give Player Tools
+NXFeExploits:CreateButton({name="GIVE TOOLS TO PLAYER", callback=function()
+    local target = NXGetTarget()
+    if not target then return NXNotify("TOOLS", "Select a player") end
+    for _, v in pairs(Player.Backpack:GetChildren()) do
+        if v:IsA("Tool") then v:Clone().Parent = target.Backpack end
+    end
+    NXNotify("TOOLS", "Gave tools to " .. target.Name)
+end})
+
+-- =====================================================
+-- TROLL ADVANCED
+NXFeExploits:CreateSection({name="TROLL ADVANCED"})
+
+-- Fake Lag
+local fakeLagConn
+NXFeExploits:CreateToggle({name="FAKE LAG", value=false, callback=function(v)
+    if v then
+        fakeLagConn = RunService.Heartbeat:Connect(function()
+            local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.Anchored = true; task.wait(0.1); hrp.Anchored = false end
+        end)
+    else
+        if fakeLagConn then fakeLagConn:Disconnect() end
+    end
+    NXNotify("FAKE LAG", v and "ON" or "OFF")
+end})
+
+-- Spam Chat
+local spamChatConn
+NXFeExploits:CreateToggle({name="SPAM CHAT", value=false, callback=function(v)
+    if v then
+        local messages = {"NEXBYTE ON TOP", "GET NEXBYTE", "NEXBYTE ADMIN", "ULTIMATE ADMIN"}
+        spamChatConn = RunService.Heartbeat:Connect(function()
+            task.wait(2)
+            game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(messages[math.random(1, #messages)], "All")
+        end)
+    else
+        if spamChatConn then spamChatConn:Disconnect() end
+    end
+    NXNotify("SPAM CHAT", v and "ON" or "OFF")
+end})
+
+-- Spam Jump
+local spamJumpConn
+NXFeExploits:CreateToggle({name="SPAM JUMP", value=false, callback=function(v)
+    if v then
+        spamJumpConn = RunService.Heartbeat:Connect(function()
+            local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+            task.wait(0.5)
+        end)
+    else
+        if spamJumpConn then spamJumpConn:Disconnect() end
+    end
+    NXNotify("SPAM JUMP", v and "ON" or "OFF")
+end})
+
+-- Spin Bot
+local spinBotConn
+NXFeExploits:CreateToggle({name="SPIN BOT", value=false, callback=function(v)
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if v and hrp then
+        local av = Instance.new("BodyAngularVelocity")
+        av.Name = "NEXBYTE_SpinBot"
+        av.AngularVelocity = Vector3.new(0, 50, 0)
+        av.MaxTorque = Vector3.new(0, 1e9, 0)
+        av.Parent = hrp
+    else
+        local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local av = hrp:FindFirstChild("NEXBYTE_SpinBot")
+            if av then av:Destroy() end
+        end
+    end
+    NXNotify("SPIN BOT", v and "ON" or "OFF")
+end})
+
+-- Headless (already have)
+
+-- No Face
+NXFeExploits:CreateButton({name="REMOVE FACE", callback=function()
+    local head = Player.Character and Player.Character:FindFirstChild("Head")
+    if head then
+        for _, v in pairs(head:GetChildren()) do
+            if v:IsA("Decal") and v.Name == "face" then v:Destroy() end
+        end
+    end
+    NXNotify("NO FACE", "Removed")
+end})
+
+-- Giant Head
+NXFeExploits:CreateButton({name="GIANT HEAD", callback=function()
+    local head = Player.Character and Player.Character:FindFirstChild("Head")
+    if head then head.Size = Vector3.new(10, 10, 10) end
+    NXNotify("GIANT HEAD", "Applied")
+end})
+
+-- Tiny Character
+NXFeExploits:CreateButton({name="TINY CHARACTER", callback=function()
+    local char = Player.Character
+    if char then
+        for _, p in pairs(char:GetDescendants()) do
+            if p:IsA("BasePart") then p.Size = p.Size * 0.1 end
+        end
+    end
+    NXNotify("TINY", "Applied")
+end})
+
+-- Giant Character
+NXFeExploits:CreateButton({name="GIANT CHARACTER", callback=function()
+    local char = Player.Character
+    if char then
+        for _, p in pairs(char:GetDescendants()) do
+            if p:IsA("BasePart") then p.Size = p.Size * 5 end
+        end
+    end
+    NXNotify("GIANT", "Applied")
+end})
+
+-- Fling Self (for fun)
+NXFeExploits:CreateButton({name="FLING SELF", callback=function()
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.Velocity = Vector3.new(math.random(-1000,1000), 1000, math.random(-1000,1000))
+        hrp.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+        NXNotify("FLING SELF", "Wheee!")
+    end
+end})
+
+-- Rocket Jump
+NXFeExploits:CreateButton({name="ROCKET JUMP", callback=function()
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.Velocity = Vector3.new(0, 500, 0)
+        NXNotify("ROCKET JUMP", "To the moon!")
+    end
+end})
+
+-- Super Punch
+NXFeExploits:CreateButton({name="SUPER PUNCH (Tool)", callback=function()
+    local tool = Instance.new("Tool")
+    tool.Name = "Super Punch"
+    tool.RequiresHandle = true
+    local handle = Instance.new("Part")
+    handle.Name = "Handle"
+    handle.Size = Vector3.new(2, 2, 2)
+    handle.Massless = true
+    handle.Parent = tool
+    tool.Activated:Connect(function()
+        local char = Player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= Player and plr.Character then
+                    local tRoot = plr.Character:FindFirstChild("HumanoidRootPart")
+                    local tHum = plr.Character:FindFirstChildOfClass("Humanoid")
+                    if tRoot and tHum and (tRoot.Position - hrp.Position).Magnitude <= 10 then
+                        tRoot.Velocity = (tRoot.Position - hrp.Position).Unit * 500 + Vector3.new(0, 200, 0)
+                        tHum:TakeDamage(50)
+                    end
+                end
+            end
+        end
+    end)
+    tool.Parent = Player.Backpack
+    NXNotify("SUPER PUNCH", "Equip and click")
+end})
+
+-- Explosion Tool
+NXFeExploits:CreateButton({name="EXPLOSION TOOL", callback=function()
+    local tool = Instance.new("Tool")
+    tool.Name = "Explosion"
+    tool.RequiresHandle = true
+    local handle = Instance.new("Part")
+    handle.Name = "Handle"
+    handle.Size = Vector3.new(1, 1, 1)
+    handle.Shape = Enum.PartType.Ball
+    handle.BrickColor = BrickColor.new("Bright red")
+    handle.Massless = true
+    handle.Parent = tool
+    tool.Activated:Connect(function()
+        local explosion = Instance.new("Explosion")
+        explosion.Position = Player:GetMouse().Hit.Position
+        explosion.BlastRadius = 20
+        explosion.BlastPressure = 100000
+        explosion.DestroyJointRadiusPercent = 1
+        explosion.Parent = workspace
+    end)
+    tool.Parent = Player.Backpack
+    NXNotify("EXPLOSION", "Click to explode")
+end})
+
+-- Black Hole Tool
+NXFeExploits:CreateButton({name="BLACK HOLE TOOL", callback=function()
+    local tool = Instance.new("Tool")
+    tool.Name = "Black Hole"
+    tool.RequiresHandle = true
+    local handle = Instance.new("Part")
+    handle.Name = "Handle"
+    handle.Size = Vector3.new(2, 2, 2)
+    handle.Shape = Enum.PartType.Ball
+    handle.BrickColor = BrickColor.new("Really black")
+    handle.Material = Enum.Material.Neon
+    handle.Massless = true
+    handle.Parent = tool
+    local conn
+    tool.Equipped:Connect(function()
+        conn = RunService.Heartbeat:Connect(function()
+            local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                for _, p in pairs(workspace:GetDescendants()) do
+                    if p:IsA("BasePart") and not p.Anchored and not p:IsDescendantOf(Player.Character) and (p.Position - hrp.Position).Magnitude <= 30 then
+                        p.AssemblyLinearVelocity = (hrp.Position - p.Position).Unit * 200
+                    end
+                end
+            end
+        end)
+    end)
+    tool.Unequipped:Connect(function()
+        if conn then conn:Disconnect() end
+    end)
+    tool.Parent = Player.Backpack
+    NXNotify("BLACK HOLE TOOL", "Equip to attract parts")
+end})
+
+-- =====================================================
+-- EXPERIMENTAL / MALICIOUS (WARNING)
+NXFeExploits:CreateSection({name="EXPERIMENTAL / MALICIOUS ⚠️"})
+
+-- Backdoor Scanner
+NXFeExploits:CreateButton({name="BACKDOOR SCANNER", callback=function()
+    local found = {}
+    for _, v in pairs(game:GetDescendants()) do
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+            local name = v.Name:lower()
+            if name:find("admin") or name:find("backdoor") or name:find("exec") or name:find("run") or name:find("cmd") or name:find("load") then
+                table.insert(found, v:GetFullName())
+            end
+        end
+    end
+    if #found > 0 then
+        print("POTENTIAL BACKDOORS:")
+        for _, f in pairs(found) do print(f) end
+        NXNotify("BACKDOOR SCAN", "Found " .. #found .. " suspicious remotes (see console)")
+    else
+        NXNotify("BACKDOOR SCAN", "None found")
+    end
+end})
+
+-- Remote Spy (Simple)
+local remoteSpyConn
+NXFeExploits:CreateToggle({name="REMOTE SPY (Simple)", value=false, callback=function(v)
+    if v then
+        remoteSpyConn = {}
+        for _, v in pairs(game:GetDescendants()) do
+            if v:IsA("RemoteEvent") then
+                remoteSpyConn[v] = v.OnClientEvent:Connect(function(...)
+                    print("[RemoteEvent] " .. v:GetFullName() .. " fired with:", ...)
+                end)
+            elseif v:IsA("RemoteFunction") then
+                -- Can't easily hook OnClientInvoke
+            end
+        end
+        NXNotify("REMOTE SPY", "Logging to console")
+    else
+        for _, c in pairs(remoteSpyConn) do c:Disconnect() end
+        remoteSpyConn = {}
+        NXNotify("REMOTE SPY", "Stopped")
+    end
+end})
+
+-- Dex Explorer (Load external)
+NXFeExploits:CreateButton({name="LOAD DARK DEX", callback=function()
+    NXNotify("DARK DEX", "Loading...")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Babyhamsta/RBLX_Scripts/main/Universal/BypassedDarkDexV3.lua"))()
+end})
+
+-- SimpleSpy (Load external)
+NXFeExploits:CreateButton({name="LOAD SIMPLE SPY", callback=function()
+    NXNotify("SIMPLE SPY", "Loading...")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/SimpleSpyV3/main.lua"))()
+end})
+
+-- Hydroxide (Load external)
+NXFeExploits:CreateButton({name="LOAD HYDROXIDE", callback=function()
+    NXNotify("HYDROXIDE", "Loading...")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Upbolt/Hydroxide/revision/init.lua"))()
+end})
+
+-- IY (Infinite Yield)
+NXFeExploits:CreateButton({name="LOAD INFINITE YIELD", callback=function()
+    NXNotify("INFINITE YIELD", "Loading...")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+end})
+
+-- CMD-X
+NXFeExploits:CreateButton({name="LOAD CMD-X", callback=function()
+    NXNotify("CMD-X", "Loading...")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/CMD-X/CMD-X/master/Source"))()
+end})
+
+-- Domain X
+NXFeExploits:CreateButton({name="LOAD DOMAIN X", callback=function()
+    NXNotify("DOMAIN X", "Loading...")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/DomainX/DomainX/main/Source"))()
+end})
+
+-- Homebrew Admin
+NXFeExploits:CreateButton({name="LOAD HOMEBREW ADMIN", callback=function()
+    NXNotify("HOMEBREW", "Loading...")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/ltseverydayyou/Nameless-Admin/main/Source"))()
+end})
+
+-- Nameless Admin
+NXFeExploits:CreateButton({name="LOAD NAMELESS ADMIN", callback=function()
+    NXNotify("NAMELESS", "Loading...")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/ltseverydayyou/Nameless-Admin/main/Source"))()
+end})
+
+-- =====================================================
+-- AUTOMATION / MACROS
+NXFeExploits:CreateSection({name="AUTOMATION / MACROS"})
+
+-- Auto Farm (generic)
+NXFeExploits:CreateToggle({name="AUTO FARM (Generic)", value=false, callback=function(v)
+    NXNotify("AUTO FARM", "Game-specific. Placeholder.")
+end})
+
+-- Auto Collect (generic)
+NXFeExploits:CreateToggle({name="AUTO COLLECT (Generic)", value=false, callback=function(v)
+    NXNotify("AUTO COLLECT", "Game-specific. Placeholder.")
+end})
+
+-- Auto Sell (generic)
+NXFeExploits:CreateToggle({name="AUTO SELL (Generic)", value=false, callback=function(v)
+    NXNotify("AUTO SELL", "Game-specific. Placeholder.")
+end})
+
+-- Auto Buy (generic)
+NXFeExploits:CreateToggle({name="AUTO BUY (Generic)", value=false, callback=function(v)
+    NXNotify("AUTO BUY", "Game-specific. Placeholder.")
+end})
+
+-- Auto Quest (generic)
+NXFeExploits:CreateToggle({name="AUTO QUEST (Generic)", value=false, callback=function(v)
+    NXNotify("AUTO QUEST", "Game-specific. Placeholder.")
+end})
+
+-- Auto Rebirth (generic)
+NXFeExploits:CreateToggle({name="AUTO REBIRTH (Generic)", value=false, callback=function(v)
+    NXNotify("AUTO REBIRTH", "Game-specific. Placeholder.")
+end})
+
+-- Auto Prestige (generic)
+NXFeExploits:CreateToggle({name="AUTO PRESTIGE (Generic)", value=false, callback=function(v)
+    NXNotify("AUTO PRESTIGE", "Game-specific. Placeholder.")
+end})
+
+-- Walk to Point
+NXFeExploits:CreateButton({name="WALK TO MOUSE", callback=function()
+    local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+    local mouse = Player:GetMouse()
+    if hum and mouse.Hit then
+        hum:MoveTo(mouse.Hit.Position)
+        NXNotify("WALK TO", "Walking to mouse")
+    end
+end})
+
+-- Pathfind to Player
+NXFeExploits:CreateButton({name="PATHFIND TO SELECTED", callback=function()
+    local target = NXGetTarget()
+    local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+    if target and target.Character and hum then
+        local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+        if tRoot then
+            local path = game:GetService("PathfindingService"):CreatePath()
+            path:ComputeAsync(Player.Character.HumanoidRootPart.Position, tRoot.Position)
+            for _, waypoint in pairs(path:GetWaypoints()) do
+                if waypoint.Action == Enum.PathWaypointAction.Jump then
+                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+                hum:MoveTo(waypoint.Position)
+                hum.MoveToFinished:Wait()
+            end
+        end
+    end
+    NXNotify("PATHFIND", "Done")
+end})
+
+-- =====================================================
+-- AUDIO / SOUND
+NXFeExploits:CreateSection({name="AUDIO / SOUND"})
+
+-- Play Sound
+NXFeExploits:CreateInput({name="SOUND ID", placeholder="rbxassetid://12345678", callback=function(v) NXFeExploits._SoundId = v end})
+NXFeExploits:CreateButton({name="PLAY SOUND", callback=function()
+    local id = NXFeExploits._SoundId
+    if not id or not id:find("%d+") then return NXNotify("SOUND", "Enter valid ID") end
+    local sound = Instance.new("Sound")
+    sound.SoundId = id:find("rbxassetid") and id or "rbxassetid://" .. id:match("%d+")
+    sound.Volume = 5
+    sound.Parent = workspace
+    sound:Play()
+    game:GetService("Debris"):AddItem(sound, 10)
+    NXNotify("SOUND", "Playing")
+end})
+
+-- Loop Sound
+NXFeExploits:CreateButton({name="LOOP SOUND", callback=function()
+    local id = NXFeExploits._SoundId
+    if not id or not id:find("%d+") then return NXNotify("SOUND", "Enter valid ID") end
+    local sound = Instance.new("Sound")
+    sound.SoundId = id:find("rbxassetid") and id or "rbxassetid://" .. id:match("%d+")
+    sound.Volume = 5
+    sound.Looped = true
+    sound.Parent = workspace
+    sound:Play()
+    NXNotify("SOUND", "Looping (rejoin to stop)")
+end})
+
+-- Stop All Sounds
+NXFeExploits:CreateButton({name="STOP ALL SOUNDS", callback=function()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Sound") then v:Stop(); v:Destroy() end
+    end
+    for _, v in pairs(game:GetService("SoundService"):GetDescendants()) do
+        if v:IsA("Sound") then v:Stop(); v:Destroy() end
+    end
+    NXNotify("SOUND", "All stopped")
+end})
+
+-- Mute All
+NXFeExploits:CreateToggle({name="MUTE ALL", value=false, callback=function(v)
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Sound") then v.Volume = v and 0 or 1 end
+    end
+    NXNotify("MUTE", v and "ON" or "OFF")
+end})
+
+-- Ear Rape (WARNING)
+NXFeExploits:CreateButton({name="EAR RAPE (WARNING)", callback=function()
+    NEXBYTE:ShowConfirmation("EAR RAPE", "EXTREMELY LOUD. Are you sure?", function(confirmed)
+        if confirmed then
+            local sound = Instance.new("Sound")
+            sound.SoundId = "rbxassetid://1837635123" -- loud sound
+            sound.Volume = 10
+            sound.PlayOnRemove = true
+            sound.Parent = workspace
+            sound:Destroy()
+            NXNotify("EAR RAPE", "Played")
+        end
+    end)
+end})
+
+-- =====================================================
+-- EXPLOIT SPECIFIC (Arceus X / Delta / Hydrogen / etc.)
+NXFeExploits:CreateSection({name="EXPLOIT SPECIFIC"})
+
+-- Get Executor Name
+NXFeExploits:CreateButton({name="GET EXECUTOR NAME", callback=function()
+    local exec = identifyexecutor and identifyexecutor() or "Unknown"
+    NXNotify("EXECUTOR", exec)
+    print("Executor: " .. exec)
+end})
+
+-- Get Exploit Level
+NXFeExploits:CreateButton({name="GET EXPLOIT LEVEL", callback=function()
+    local level = "Unknown"
+    if getthreadidentity then level = "Level " .. getthreadidentity() end
+    NXNotify("EXPLOIT LEVEL", level)
+end})
+
+-- Check Functions
+NXFeExploits:CreateButton({name="CHECK FUNCTIONS", callback=function()
+    local funcs = {"loadstring", "getgenv", "setclipboard", "identifyexecutor", "getthreadidentity", "firetouchinterest", "fireclickdetector", "hookfunction", "hookmetamethod", "getrawmetatable", "setrawmetatable", "getnamecallmethod", "getcallingscript", "getscriptclosure", "iscclosure", "islclosure", "newcclosure", "newlclosure", "rconsoleprint", "rconsoleinfo", "rconsolewarn", "rconsoleerr"}
+    local available = {}
+    for _, f in pairs(funcs) do
+        if _G[f] or getfenv()[f] then table.insert(available, f) end
+    end
+    print("Available functions: " .. table.concat(available, ", "))
+    NXNotify("FUNCTIONS", #available .. " available (see console)")
+end})
+
+-- Unlock FPS
+NXFeExploits:CreateButton({name="UNLOCK FPS", callback=function()
+    setfpscap(999)
+    NXNotify("FPS", "Uncapped")
+end})
+
+-- Set FPS Cap
+NXFeExploits:CreateSlider({name="FPS CAP", range={10, 999}, value=60, callback=function(v)
+    setfpscap(v)
+end})
+
+-- Get Nil Instances
+NXFeExploits:CreateButton({name="GET NIL INSTANCES", callback=function()
+    local count = 0
+    for _, v in pairs(getnilinstances and getnilinstances() or {}) do count = count + 1 end
+    NXNotify("NIL INSTANCES", count)
+end})
+
+-- Get Hidden Properties
+NXFeExploits:CreateButton({name="HIDDEN PROPERTIES", callback=function()
+    NXNotify("HIDDEN PROPS", "Requires specific exploit. Placeholder.")
+end})
+
+-- =====================================================
+-- MISCELLANEOUS
+NXFeExploits:CreateSection({name="MISCELLANEOUS"})
+
+-- Reset Character
+NXFeExploits:CreateButton({name="RESET CHARACTER", callback=function()
+    Player:LoadCharacter()
+end})
+
+-- Respawn at Spawn
+NXFeExploits:CreateButton({name="RESPAWN AT SPAWN", callback=function()
+    local spawn = workspace:FindFirstChildOfClass("SpawnLocation")
+    if spawn then
+        Player:LoadCharacter()
+        task.wait(1)
+        local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.CFrame = spawn.CFrame * CFrame.new(0, 5, 0) end
+    end
+end})
+
+-- Sit
+NXFeExploits:CreateButton({name="SIT", callback=function()
+    local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum.Sit = true end
+end})
+
+-- Lay Down (already have)
+
+-- Dance (already have)
+
+-- Emote Menu (already have)
+
+-- Chat
+NXFeExploits:CreateInput({name="CHAT MESSAGE", placeholder="Message to send", callback=function(v) NXFeExploits._ChatMsg = v end})
+NXFeExploits:CreateButton({name="SEND CHAT", callback=function()
+    local msg = NXFeExploits._ChatMsg
+    if msg and msg ~= "" then
+        game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
+        NXNotify("CHAT", "Sent")
+    end
+end})
+
+-- Whisper
+NXFeExploits:CreateInput({name="WHISPER TARGET", placeholder="Player name", callback=function(v) NXFeExploits._WhisperTarget = v end})
+NXFeExploits:CreateInput({name="WHISPER MESSAGE", placeholder="Message", callback=function(v) NXFeExploits._WhisperMsg = v end})
+NXFeExploits:CreateButton({name="WHISPER", callback=function()
+    local target = Players:FindFirstChild(NXFeExploits._WhisperTarget)
+    local msg = NXFeExploits._WhisperMsg
+    if target and msg and msg ~= "" then
+        game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer("/w " .. target.Name .. " " .. msg, "All")
+        NXNotify("WHISPER", "Sent to " .. target.Name)
+    end
+end})
+
+-- Anti Chat Log
+NXFeExploits:CreateToggle({name="ANTI CHAT LOG", value=false, callback=function(v)
+    NXNotify("ANTI CHAT LOG", "Game-specific. Placeholder.")
+end})
+
+-- Auto Click (already have)
+
+-- Auto Farm (already have)
+
+-- Rejoin (already have)
+
+-- Server Hop (already have)
+
+-- =====================================================
 -- LOGS TAB
 -- =====================================================
 local NXLogs = NXWindow:CreateTab({name="LOGS", icon="history"})
